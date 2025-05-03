@@ -1,42 +1,83 @@
-use crossterm::event::{read, Event::Key, KeyCode::Char};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+#![warn(clippy::all, clippy::pedantic)]
+// #![allow(unused_variables)]
+mod terminal;
+use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
+use std::io::Error;
+use terminal::{Position, Size, Terminal};
 
-pub struct Editor {}
+pub struct Editor {
+    should_quit: bool,
+}
 
 impl Default for Editor {
     fn default() -> Self {
-        Self {}
+        Self { should_quit: false }
     }
 }
 
 impl Editor {
-    pub fn run(&self) {
-        enable_raw_mode().unwrap();
+    pub fn run(&mut self) {
+        Terminal::initialize().unwrap();
+        let result = self.repl();
+        Terminal::terminate().unwrap();
+        result.unwrap();
+    }
+
+    fn repl(&mut self) -> Result<(), Error> {
         loop {
-            match read() {
-                Ok(Key(event)) => {
-                    println!("{:?} \r", event);
-                    match event.code {
-                        Char(c) => {
-                            if c.is_control() {
-                                println!("Binary: {0:08b} ASCII: {0:03} \r", c as u8);
-                            } else {
-                                println!(
-                                    "Binary: {0:08b} ASCII: {0:03} Character: {1:#?}\r",
-                                    c as u8, c
-                                );
-                            }
-                            if c == 'q' {
-                                break;
-                            }
-                        }
-                        _ => (),
-                    }
+            self.refresh_screen()?;
+            if self.should_quit {
+                break;
+            }
+            let event = read()?;
+            self.evaluate_event(&event);
+        }
+        Ok(())
+    }
+
+    fn evaluate_event(&mut self, event: &Event) {
+        if let Key(KeyEvent {
+            code,
+            modifiers,
+            kind,
+            state,
+        }) = event
+        {
+            println!(
+                "[Info] Code: {code:?} Modifiers: {modifiers:?} Kind: {kind:?} State: {state:?} \r"
+            );
+            match code {
+                Char('q') if *modifiers == KeyModifiers::CONTROL => {
+                    self.should_quit = true;
                 }
-                Err(err) => println!("Error: {}", err),
                 _ => (),
             }
         }
-        disable_raw_mode().unwrap();
+    }
+
+    fn refresh_screen(&self) -> Result<(), Error> {
+        Terminal::hide_cursor()?;
+        if self.should_quit {
+            Terminal::clear_screen()?;
+            Terminal::print("Goodbye.\r\n")?;
+            Terminal::execute()?;
+        } else {
+            Self::draw_rows()?;
+            Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+        }
+        Terminal::show_cursor()?;
+        Terminal::execute()?;
+        Ok(())
+    }
+
+    fn draw_rows() -> Result<(), Error> {
+        let Size { height, .. } = Terminal::size()?;
+        let mut i = 0;
+        while i < height - 1 {
+            Terminal::print("~\r\n")?;
+            i += 1;
+        }
+        Terminal::print("~")?;
+        Ok(())
     }
 }
