@@ -2,21 +2,25 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-03 20:49:45
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-03 22:21:36
+ * @LastEditTime: 2025-05-07 14:10:25
  * @FilePath: \rim\src\terminal.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
-use crossterm::cursor::{position, Hide, MoveTo, Show};
-use crossterm::queue;
+#![warn(clippy::all, clippy::pedantic)]
+use core::fmt::Display;
+use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
+use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
 
+#[derive(Copy, Clone)]
 pub struct Size {
     pub height: u16,
     pub width: u16,
 }
 
+#[derive(Copy, Clone)]
 pub struct Position {
     pub x: u16,
     pub y: u16,
@@ -38,34 +42,33 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn print(str: &str) -> Result<(), Error> {
-        queue!(stdout(), Print(str))?;
-
+    pub fn print(str: impl Display) -> Result<(), Error> {
+        Self::queue_command(Print(str))?;
         Ok(())
     }
 
     pub fn clear_screen() -> Result<(), Error> {
-        queue!(stdout(), Clear(ClearType::All))?;
+        Self::queue_command(Clear(ClearType::All))?;
         Ok(())
     }
 
     pub fn clear_line() -> Result<(), Error> {
-        queue!(stdout(), Clear(ClearType::CurrentLine))?;
+        Self::queue_command(Clear(ClearType::CurrentLine))?;
         Ok(())
     }
 
     pub fn move_cursor_to(postion: Position) -> Result<(), Error> {
-        queue!(stdout(), MoveTo(postion.x, postion.y))?;
+        Self::queue_command(MoveTo(postion.x, postion.y))?;
         Ok(())
     }
 
     pub fn hide_cursor() -> Result<(), Error> {
-        queue!(stdout(), Hide)?;
+        Self::queue_command(Hide)?;
         Ok(())
     }
 
     pub fn show_cursor() -> Result<(), Error> {
-        queue!(stdout(), Show)?;
+        Self::queue_command(Show)?;
         Ok(())
     }
 
@@ -76,6 +79,11 @@ impl Terminal {
 
     pub fn execute() -> Result<(), Error> {
         stdout().flush()?;
+        Ok(())
+    }
+
+    fn queue_command(command: impl Command) -> Result<(), Error> {
+        queue!(stdout(), command)?;
         Ok(())
     }
 }
