@@ -2,11 +2,12 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-07 19:46:06
+ * @LastEditTime: 2025-05-07 21:05:04
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 mod terminal;
+mod view;
 use core::cmp::{max, min};
 use crossterm::event::{
     read,
@@ -15,10 +16,8 @@ use crossterm::event::{
 };
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-const INFO_SECTION_SIZE: usize = 5;
+use view::View;
+pub const INFO_SECTION_SIZE: usize = 5;
 
 #[derive(Copy, Clone, Default)]
 struct Location {
@@ -29,9 +28,9 @@ struct Location {
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
-    key_events_info: [String; INFO_SECTION_SIZE as usize],
-    current_info_line: usize,
     location: Location, // cursor's position
+    key_events_info: [String; INFO_SECTION_SIZE],
+    current_info_line: usize,
 }
 
 impl Editor {
@@ -98,15 +97,16 @@ impl Editor {
             state,
         }) = event
         {
-            let info = format!("[INFO] Code: {code:?} Modifiers: {modifiers:?} State: {state:?}");
-            if self.current_info_line + 1 < INFO_SECTION_SIZE as usize {
+            let info =
+                format!("[INFO] <KEY> {code:?} Pressed, Modifiers: {modifiers:?} State: {state:?}");
+            if self.current_info_line + 1 < INFO_SECTION_SIZE {
                 self.key_events_info[self.current_info_line] = info;
                 self.current_info_line += 1;
             } else if INFO_SECTION_SIZE > 0 {
-                for cur_row in 0..INFO_SECTION_SIZE as usize - 1 {
+                for cur_row in 0..INFO_SECTION_SIZE - 1 {
                     self.key_events_info[cur_row] = self.key_events_info[cur_row + 1].clone();
                 }
-                self.key_events_info[INFO_SECTION_SIZE as usize - 1] = info;
+                self.key_events_info[INFO_SECTION_SIZE - 1] = info;
             }
             match code {
                 KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
@@ -136,10 +136,11 @@ impl Editor {
         })?; // 光标定位到信息区下方
         if self.should_quit {
             Terminal::clear_screen()?;
-            Terminal::print("Goodbye.\r\n")?;
+            Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+            Terminal::print("Goodbye. <rim> user.\r\n")?;
             Terminal::execute()?;
         } else {
-            self.draw_rows()?;
+            View::render(&self.key_events_info)?; // 原来是Editor::draw_rows()方法
             Terminal::move_cursor_to(Position {
                 x: self.location.x,
                 y: self.location.y,
@@ -147,60 +148,6 @@ impl Editor {
         }
         Terminal::show_cursor()?;
         Terminal::execute()?;
-        Ok(())
-    }
-
-    fn draw_rows(&self) -> Result<(), Error> {
-        Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
-        let Size { height, width } = Terminal::size()?;
-        let terminal_width = width as usize;
-
-        for cur_row in 0..height - 1 {
-            Terminal::clear_line()?;
-
-            match cur_row {
-                // 前n行显示按键信息
-                y if y < INFO_SECTION_SIZE => {
-                    let info = &self.key_events_info[cur_row as usize];
-                    let display_info = if info.len() > terminal_width {
-                        format!("{}...", &info[..terminal_width.saturating_sub(3)])
-                    } else {
-                        info.clone()
-                    };
-                    Terminal::print(&display_info)?;
-                }
-                // 欢迎信息行
-                y if y == height / 2 => {
-                    Self::draw_welcome_msg_row()?;
-                }
-                // 其他普通行
-                _ => {
-                    Self::draw_empty_row()?;
-                }
-            }
-
-            Terminal::print("\r\n")?;
-        }
-
-        Terminal::print("~")?;
-        Ok(())
-    }
-
-    fn draw_welcome_msg_row() -> Result<(), Error> {
-        let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
-        let Size { height: _, width } = Terminal::size()?;
-        let msg_len = welcome_msg.len();
-        let width = width as usize;
-        let padding = (width.saturating_sub(msg_len)) / 2;
-        let spaces = " ".repeat(padding - 1);
-        welcome_msg = format!("~{spaces}{welcome_msg}");
-        welcome_msg.truncate(width);
-        Terminal::print(&welcome_msg)?;
-        Ok(())
-    }
-
-    fn draw_empty_row() -> Result<(), Error> {
-        Terminal::print("~")?;
         Ok(())
     }
 }
