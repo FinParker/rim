@@ -2,11 +2,10 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-03 20:49:45
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-07 14:10:25
+ * @LastEditTime: 2025-05-07 19:28:45
  * @FilePath: \rim\src\terminal.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
-#![warn(clippy::all, clippy::pedantic)]
 use core::fmt::Display;
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
@@ -16,14 +15,14 @@ use std::io::{stdout, Error, Write};
 
 #[derive(Copy, Clone)]
 pub struct Size {
-    pub height: u16,
-    pub width: u16,
+    pub height: usize,
+    pub width: usize,
 }
 
 #[derive(Copy, Clone)]
 pub struct Position {
-    pub x: u16,
-    pub y: u16,
+    pub x: usize,
+    pub y: usize,
 }
 pub struct Terminal {}
 
@@ -58,7 +57,8 @@ impl Terminal {
     }
 
     pub fn move_cursor_to(postion: Position) -> Result<(), Error> {
-        Self::queue_command(MoveTo(postion.x, postion.y))?;
+        #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+        Self::queue_command(MoveTo(postion.x as u16, postion.y as u16))?;
         Ok(())
     }
 
@@ -74,6 +74,10 @@ impl Terminal {
 
     pub fn size() -> Result<Size, Error> {
         let (width, height) = size()?;
+        #[allow(clippy::as_conversions)]
+        let width = width as usize;
+        #[allow(clippy::as_conversions)]
+        let height = height as usize;
         Ok(Size { height, width })
     }
 
