@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 11:56:49
+ * @LastEditTime: 2025-05-09 13:48:02
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -25,7 +25,7 @@ use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
 };
 
-use std::io::Error;
+use std::{env, io::Error};
 use terminal::{Position, Size, Terminal};
 use view::View;
 pub const INFO_SECTION_SIZE: usize = 5;
@@ -50,9 +50,17 @@ impl Editor {
         Terminal::initialize().unwrap();
         self.location.x = 0;
         self.location.y = INFO_SECTION_SIZE;
+        self.parse_args();
         let result = self.repl();
         Terminal::terminate().unwrap();
         result.unwrap();
+    }
+
+    fn parse_args(&mut self) {
+        let args: Vec<String> = env::args().collect();
+        if let Some(filename) = args.get(1) {
+            self.view.load_file(filename);
+        }
     }
 
     fn repl(&mut self) -> Result<(), Error> {
@@ -142,17 +150,13 @@ impl Editor {
 
     fn refresh_screen(&self) -> Result<(), Error> {
         Terminal::hide_cursor()?;
-        Terminal::move_cursor_to(Position {
-            x: 0,
-            y: INFO_SECTION_SIZE,
-        })?; // 光标定位到信息区下方
         if self.should_quit {
             Terminal::clear_screen()?;
             Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
             Terminal::print("Goodbye. <rim> user.\r\n")?;
             Terminal::execute()?;
         } else {
-            self.view.render(&self.key_events_info)?; // 原来是Editor::draw_rows()方法
+            self.view.render(&self.key_events_info)?;
             Terminal::move_cursor_to(Position {
                 x: self.location.x,
                 y: self.location.y,

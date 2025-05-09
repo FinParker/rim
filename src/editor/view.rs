@@ -2,14 +2,16 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 12:08:45
+ * @LastEditTime: 2025-05-09 14:03:02
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 mod buffer;
 use buffer::Buffer;
+use crossterm::cursor;
 
 use crate::editor::terminal::{Position, Size, Terminal};
+use std::cmp::min;
 use std::io::Error;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
@@ -23,64 +25,91 @@ pub struct View {
 }
 
 impl View {
-    pub fn render(&self, key_events_info: &[String; INFO_SECTION_SIZE]) -> Result<(), Error> {
-        Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
-        let Size { height, width } = Terminal::size()?;
-
-        if height > 0 {
-            for cur_row in 0..height - 1 {
-                Terminal::clear_line()?;
-                match cur_row {
-                    // 前n行显示按键信息
-                    y if y < INFO_SECTION_SIZE => {
-                        let info = key_events_info[cur_row].clone();
-                        let display_info = if info.len() > width {
-                            format!("{}...", &info[..width.saturating_sub(3)])
-                        } else {
-                            info.clone()
-                        };
-                        Terminal::print(&display_info)?;
-                    }
-                    // 欢迎信息行
-                    #[allow(clippy::integer_division)]
-                    y if y == height / 2 => {
-                        Self::draw_welcome_msg_row()?;
-                    }
-                    y if y >= INFO_SECTION_SIZE => {
-                        if let Some(line) = self.buffer.lines.get(y - INFO_SECTION_SIZE) {
-                            Terminal::print(line)?;
-                        } else {
-                            Self::draw_empty_row()?;
-                        }
-                    }
-                    // 其他普通行
-                    _ => {
-                        Self::draw_empty_row()?;
-                    }
-                }
-                Terminal::print("\r\n")?;
-            }
-            Terminal::print("~")?;
+    pub fn load_file(&mut self, filename: &str) {
+        if let Ok(buffer) = Buffer::load_file(filename) {
+            self.buffer = buffer;
         }
+    }
 
+    fn render_info(
+        &self,
+        key_events_info: &[String; INFO_SECTION_SIZE],
+        size: Size,
+    ) -> Result<(), Error> {
+        let Size { height: _, width } = size;
+        for cur_row in 0..INFO_SECTION_SIZE {
+            Terminal::clear_line()?;
+            if cur_row < INFO_SECTION_SIZE {
+                let info = key_events_info[cur_row].clone();
+                let display_info = if info.len() > width {
+                    format!("{}...", &info[..width.saturating_sub(3)])
+                } else {
+                    info
+                };
+                Terminal::print(&display_info)?;
+            } else {
+                Terminal::print("~")?;
+            }
+            Terminal::move_cursor_to(Position {
+                x: 0,
+                y: min(cur_row + 1, INFO_SECTION_SIZE - 1),
+            })?;
+        }
         Ok(())
     }
 
-    fn draw_welcome_msg_row() -> Result<(), Error> {
-        let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
-        let Size { height: _, width } = Terminal::size()?;
-        let msg_len = welcome_msg.len();
-        #[allow(clippy::integer_division)]
-        let padding = (width.saturating_sub(msg_len)) / 2;
-        let spaces = " ".repeat(padding);
-        welcome_msg = format!("~{spaces}{welcome_msg}");
-        welcome_msg.truncate(width);
-        Terminal::print(&welcome_msg)?;
+    fn render_buffer(&self, size: Size) -> Result<(), Error> {
+        let Size { height, width: _ } = size;
+        Terminal::move_cursor_to(Position {
+            x: 0,
+            y: INFO_SECTION_SIZE,
+        })?;
+        for cur_row in INFO_SECTION_SIZE..height {
+            let buffer_index = cur_row - INFO_SECTION_SIZE;
+            Terminal::clear_line()?;
+            if let Some(line) = self.buffer.lines.get(buffer_index) {
+                Terminal::print(line)?;
+            } else {
+                Self::draw_empty_row()?;
+            }
+            Terminal::move_cursor_to(Position {
+                x: 0,
+                y: min(cur_row + 1, height - 1),
+            })?;
+        }
+        Ok(())
+    }
+    pub fn render(&self, key_events_info: &[String; INFO_SECTION_SIZE]) -> Result<(), Error> {
+        let size = Terminal::size()?;
+        let Size { height, width: _ } = size;
+        Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+
+        if height > INFO_SECTION_SIZE {
+            self.render_info(key_events_info, size)?;
+            self.render_buffer(size)?;
+        } else {
+            self.draw_size_warning(size)?;
+        }
         Ok(())
     }
 
     fn draw_empty_row() -> Result<(), Error> {
         Terminal::print("~")?;
+        Ok(())
+    }
+
+    fn draw_size_warning(&self, size: Size) -> Result<(), Error> {
+        const WARNING_MSG: &str = "终端尺寸过小，建议调整窗口大小";
+        for row in 0..size.height {
+            Terminal::clear_line()?;
+            if row == 0 {
+                Terminal::print(WARNING_MSG)?;
+            }
+            Terminal::move_cursor_to(Position {
+                x: 0,
+                y: min(row + 1, size.height - 1),
+            })?;
+        }
         Ok(())
     }
 }
