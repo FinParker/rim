@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 13:48:02
+ * @LastEditTime: 2025-05-09 14:09:34
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,7 +28,8 @@ use crossterm::event::{
 use std::{env, io::Error};
 use terminal::{Position, Size, Terminal};
 use view::View;
-pub const INFO_SECTION_SIZE: usize = 5;
+
+use crate::editor::view::INFO_SECTION_SIZE;
 
 #[derive(Copy, Clone, Default)]
 struct Location {
@@ -40,8 +41,6 @@ struct Location {
 pub struct Editor {
     should_quit: bool,
     location: Location, // cursor's position
-    key_events_info: [String; INFO_SECTION_SIZE],
-    current_info_line: usize,
     view: View,
 }
 
@@ -119,15 +118,7 @@ impl Editor {
         {
             let info =
                 format!("[INFO] <KEY> {code:?} Pressed, Modifiers: {modifiers:?} State: {state:?}");
-            if self.current_info_line + 1 < INFO_SECTION_SIZE {
-                self.key_events_info[self.current_info_line] = info;
-                self.current_info_line += 1;
-            } else if INFO_SECTION_SIZE > 0 {
-                for cur_row in 0..INFO_SECTION_SIZE - 1 {
-                    self.key_events_info[cur_row] = self.key_events_info[cur_row + 1].clone();
-                }
-                self.key_events_info[INFO_SECTION_SIZE - 1] = info;
-            }
+            self.view.log_key_event(info);
             match code {
                 KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
                     self.should_quit = true;
@@ -148,7 +139,7 @@ impl Editor {
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), Error> {
+    fn refresh_screen(&mut self) -> Result<(), Error> {
         Terminal::hide_cursor()?;
         if self.should_quit {
             Terminal::clear_screen()?;
@@ -156,7 +147,7 @@ impl Editor {
             Terminal::print("Goodbye. <rim> user.\r\n")?;
             Terminal::execute()?;
         } else {
-            self.view.render(&self.key_events_info)?;
+            self.view.render()?;
             Terminal::move_cursor_to(Position {
                 x: self.location.x,
                 y: self.location.y,

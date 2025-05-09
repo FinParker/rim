@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 14:03:02
+ * @LastEditTime: 2025-05-09 14:10:16
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -17,10 +17,12 @@ use std::io::Error;
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use crate::editor::INFO_SECTION_SIZE;
+pub const INFO_SECTION_SIZE: usize = 5;
 
 #[derive(Default)]
 pub struct View {
+    key_events_info: [String; INFO_SECTION_SIZE],
+    current_info_line: usize,
     buffer: Buffer,
 }
 
@@ -31,16 +33,12 @@ impl View {
         }
     }
 
-    fn render_info(
-        &self,
-        key_events_info: &[String; INFO_SECTION_SIZE],
-        size: Size,
-    ) -> Result<(), Error> {
+    fn render_info(&mut self, size: Size) -> Result<(), Error> {
         let Size { height: _, width } = size;
         for cur_row in 0..INFO_SECTION_SIZE {
             Terminal::clear_line()?;
             if cur_row < INFO_SECTION_SIZE {
-                let info = key_events_info[cur_row].clone();
+                let info = self.key_events_info[cur_row].clone();
                 let display_info = if info.len() > width {
                     format!("{}...", &info[..width.saturating_sub(3)])
                 } else {
@@ -79,16 +77,16 @@ impl View {
         }
         Ok(())
     }
-    pub fn render(&self, key_events_info: &[String; INFO_SECTION_SIZE]) -> Result<(), Error> {
+    pub fn render(&mut self) -> Result<(), Error> {
         let size = Terminal::size()?;
         let Size { height, width: _ } = size;
         Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
 
         if height > INFO_SECTION_SIZE {
-            self.render_info(key_events_info, size)?;
+            self.render_info(size)?;
             self.render_buffer(size)?;
         } else {
-            self.draw_size_warning(size)?;
+            Self::draw_size_warning(size)?;
         }
         Ok(())
     }
@@ -98,7 +96,7 @@ impl View {
         Ok(())
     }
 
-    fn draw_size_warning(&self, size: Size) -> Result<(), Error> {
+    fn draw_size_warning(size: Size) -> Result<(), Error> {
         const WARNING_MSG: &str = "终端尺寸过小，建议调整窗口大小";
         for row in 0..size.height {
             Terminal::clear_line()?;
@@ -111,5 +109,17 @@ impl View {
             })?;
         }
         Ok(())
+    }
+
+    pub fn log_key_event(&mut self, info: String) {
+        if self.current_info_line + 1 < INFO_SECTION_SIZE {
+            self.key_events_info[self.current_info_line] = info;
+            self.current_info_line += 1;
+        } else if INFO_SECTION_SIZE > 0 {
+            for cur_row in 0..INFO_SECTION_SIZE - 1 {
+                self.key_events_info[cur_row] = self.key_events_info[cur_row + 1].clone();
+            }
+            self.key_events_info[INFO_SECTION_SIZE - 1] = info;
+        }
     }
 }
