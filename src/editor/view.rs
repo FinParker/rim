@@ -2,13 +2,13 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 14:10:16
+ * @LastEditTime: 2025-05-09 14:24:08
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 mod buffer;
 use buffer::Buffer;
-use crossterm::cursor;
+use std::collections::VecDeque;
 
 use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
@@ -21,8 +21,7 @@ pub const INFO_SECTION_SIZE: usize = 5;
 
 #[derive(Default)]
 pub struct View {
-    key_events_info: [String; INFO_SECTION_SIZE],
-    current_info_line: usize,
+    key_events_info: VecDeque<String>,
     buffer: Buffer,
 }
 
@@ -37,16 +36,16 @@ impl View {
         let Size { height: _, width } = size;
         for cur_row in 0..INFO_SECTION_SIZE {
             Terminal::clear_line()?;
-            if cur_row < INFO_SECTION_SIZE {
-                let info = self.key_events_info[cur_row].clone();
+            if let Some(info) = self.key_events_info.get(cur_row) {
                 let display_info = if info.len() > width {
                     format!("{}...", &info[..width.saturating_sub(3)])
                 } else {
-                    info
+                    info.clone()
                 };
                 Terminal::print(&display_info)?;
             } else {
-                Terminal::print("~")?;
+                // 没有信息时显示空行标志
+                Terminal::print("[INFO]")?;
             }
             Terminal::move_cursor_to(Position {
                 x: 0,
@@ -112,14 +111,12 @@ impl View {
     }
 
     pub fn log_key_event(&mut self, info: String) {
-        if self.current_info_line + 1 < INFO_SECTION_SIZE {
-            self.key_events_info[self.current_info_line] = info;
-            self.current_info_line += 1;
-        } else if INFO_SECTION_SIZE > 0 {
-            for cur_row in 0..INFO_SECTION_SIZE - 1 {
-                self.key_events_info[cur_row] = self.key_events_info[cur_row + 1].clone();
-            }
-            self.key_events_info[INFO_SECTION_SIZE - 1] = info;
+        if INFO_SECTION_SIZE == 0 {
+            return;
         }
+        if self.key_events_info.len() >= INFO_SECTION_SIZE {
+            self.key_events_info.pop_front();
+        }
+        self.key_events_info.push_back(info);
     }
 }

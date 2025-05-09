@@ -2,11 +2,10 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-03 20:49:45
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-07 19:28:45
+ * @LastEditTime: 2025-05-09 14:18:15
  * @FilePath: \rim\src\terminal.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
-use core::fmt::Display;
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
