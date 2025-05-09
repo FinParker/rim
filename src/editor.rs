@@ -2,18 +2,29 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-07 21:05:04
+ * @LastEditTime: 2025-05-09 11:56:49
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
+/*
+ * @Author: iming 2576226012@qq.com
+ * @Date: 2025-05-01 08:52:36
+ * @LastEditors: iming 2576226012@qq.com
+ * @LastEditTime: 2025-05-08 09:26:01
+ * @FilePath: \rim\src\editor.rs
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+
 mod terminal;
 mod view;
+
 use core::cmp::{max, min};
 use crossterm::event::{
     read,
     Event::{self, Key},
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
 };
+
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
 use view::View;
@@ -31,6 +42,7 @@ pub struct Editor {
     location: Location, // cursor's position
     key_events_info: [String; INFO_SECTION_SIZE],
     current_info_line: usize,
+    view: View,
 }
 
 impl Editor {
@@ -140,7 +152,7 @@ impl Editor {
             Terminal::print("Goodbye. <rim> user.\r\n")?;
             Terminal::execute()?;
         } else {
-            View::render(&self.key_events_info)?; // 原来是Editor::draw_rows()方法
+            self.view.render(&self.key_events_info)?; // 原来是Editor::draw_rows()方法
             Terminal::move_cursor_to(Position {
                 x: self.location.x,
                 y: self.location.y,
