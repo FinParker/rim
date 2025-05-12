@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 14:09:34
+ * @LastEditTime: 2025-05-12 08:24:57
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -59,6 +59,8 @@ impl Editor {
         let args: Vec<String> = env::args().collect();
         if let Some(filename) = args.get(1) {
             self.view.load_file(filename);
+        } else {
+            self.view.log_event("INFO", &format!("No file opend."));
         }
     }
 
@@ -116,9 +118,10 @@ impl Editor {
             state,
         }) = event
         {
-            let info =
-                format!("[INFO] <KEY> {code:?} Pressed, Modifiers: {modifiers:?} State: {state:?}");
-            self.view.log_key_event(info);
+            self.view.log_event(
+                "KEY",
+                &format!("<KEY> {code:?} Pressed, Modifiers: {modifiers:?} State: {state:?}"),
+            );
             match code {
                 KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
                     self.should_quit = true;

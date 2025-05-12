@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-09 14:24:08
+ * @LastEditTime: 2025-05-12 08:29:06
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -45,7 +45,7 @@ impl View {
                 Terminal::print(&display_info)?;
             } else {
                 // 没有信息时显示空行标志
-                Terminal::print("[INFO]")?;
+                Terminal::print("")?;
             }
             Terminal::move_cursor_to(Position {
                 x: 0,
@@ -110,13 +110,14 @@ impl View {
         Ok(())
     }
 
-    pub fn log_key_event(&mut self, info: String) {
+    pub fn log_event(&mut self, tag: &str, info: &str) {
+        let str = format!("[{:<4}] {}", tag, info);
         if INFO_SECTION_SIZE == 0 {
             return;
         }
         if self.key_events_info.len() >= INFO_SECTION_SIZE {
             self.key_events_info.pop_front();
         }
-        self.key_events_info.push_back(info);
+        self.key_events_info.push_back(str);
     }
 }
