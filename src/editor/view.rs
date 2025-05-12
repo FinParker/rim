@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-12 08:29:06
+ * @LastEditTime: 2025-05-12 09:51:30
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -14,26 +14,50 @@ use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
 use std::io::Error;
 
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+// const NAME: &str = env!("CARGO_PKG_NAME");
+// const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const INFO_SECTION_SIZE: usize = 5;
 
-#[derive(Default)]
 pub struct View {
     key_events_info: VecDeque<String>,
     buffer: Buffer,
+    needs_redraw_buffer: bool,
+    size: Size,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            key_events_info: VecDeque::default(),
+            buffer: Buffer::default(),
+            needs_redraw_buffer: true,
+            size: Terminal::size().unwrap_or_default(),
+        }
+    }
 }
 
 impl View {
+    pub fn resize(&mut self, to: Size) {
+        self.size = to;
+        self.needs_redraw_buffer = true;
+        self.log_event(
+            "INFO",
+            &format!(
+                "Change window size to {{ height: {} }}, {{ width:  {} }}",
+                self.size.height, self.size.width
+            ),
+        );
+    }
     pub fn load_file(&mut self, filename: &str) {
         if let Ok(buffer) = Buffer::load_file(filename) {
             self.buffer = buffer;
+            self.log_event("INFO", &format!("{filename:?} opened."));
         }
     }
 
-    fn render_info(&mut self, size: Size) -> Result<(), Error> {
-        let Size { height: _, width } = size;
+    fn render_info(&mut self) -> Result<(), Error> {
+        let Size { height: _, width } = self.size;
         for cur_row in 0..INFO_SECTION_SIZE {
             Terminal::clear_line()?;
             if let Some(info) = self.key_events_info.get(cur_row) {
@@ -55,8 +79,8 @@ impl View {
         Ok(())
     }
 
-    fn render_buffer(&self, size: Size) -> Result<(), Error> {
-        let Size { height, width: _ } = size;
+    fn render_buffer(&mut self) -> Result<(), Error> {
+        let Size { height, width } = self.size;
         Terminal::move_cursor_to(Position {
             x: 0,
             y: INFO_SECTION_SIZE,
@@ -74,18 +98,20 @@ impl View {
                 y: min(cur_row + 1, height - 1),
             })?;
         }
+        self.needs_redraw_buffer = false;
         Ok(())
     }
     pub fn render(&mut self) -> Result<(), Error> {
-        let size = Terminal::size()?;
-        let Size { height, width: _ } = size;
+        let Size { height, width: _ } = self.size;
         Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
 
         if height > INFO_SECTION_SIZE {
-            self.render_info(size)?;
-            self.render_buffer(size)?;
+            self.render_info()?;
+            if self.needs_redraw_buffer {
+                self.render_buffer()?;
+            }
         } else {
-            Self::draw_size_warning(size)?;
+            self.draw_size_warning()?;
         }
         Ok(())
     }
@@ -95,16 +121,16 @@ impl View {
         Ok(())
     }
 
-    fn draw_size_warning(size: Size) -> Result<(), Error> {
+    fn draw_size_warning(&self) -> Result<(), Error> {
         const WARNING_MSG: &str = "终端尺寸过小，建议调整窗口大小";
-        for row in 0..size.height {
+        for row in 0..self.size.height {
             Terminal::clear_line()?;
             if row == 0 {
                 Terminal::print(WARNING_MSG)?;
             }
             Terminal::move_cursor_to(Position {
                 x: 0,
-                y: min(row + 1, size.height - 1),
+                y: min(row + 1, self.size.height - 1),
             })?;
         }
         Ok(())

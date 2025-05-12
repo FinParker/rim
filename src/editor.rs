@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-12 08:24:57
+ * @LastEditTime: 2025-05-12 09:31:58
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -76,7 +76,7 @@ impl Editor {
         Ok(())
     }
 
-    fn move_point(&mut self, key_code: KeyCode) -> Result<(), Error> {
+    fn move_point(&mut self, key_code: &KeyCode) -> Result<(), Error> {
         let Location { mut x, mut y } = self.location;
         let Size { height, width } = Terminal::size()?;
         match key_code {
@@ -111,33 +111,46 @@ impl Editor {
     }
 
     fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
-        if let Key(KeyEvent {
-            code,
-            modifiers,
-            kind: KeyEventKind::Press,
-            state,
-        }) = event
-        {
-            self.view.log_event(
-                "KEY",
-                &format!("<KEY> {code:?} Pressed, Modifiers: {modifiers:?} State: {state:?}"),
-            );
-            match code {
-                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
-                    self.should_quit = true;
+        match event {
+            Event::Key(KeyEvent {
+                code,
+                modifiers,
+                kind: KeyEventKind::Press,
+                state,
+            }) => {
+                self.view.log_event(
+                    "KEY",
+                    &format!("<KEY> {code:?} Pressed, {modifiers:?}, State: {state:?}"),
+                );
+
+                match (code, *modifiers) {
+                    (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+                        self.should_quit = true;
+                    }
+                    (
+                        KeyCode::Up
+                        | KeyCode::Down
+                        | KeyCode::Left
+                        | KeyCode::Right
+                        | KeyCode::PageDown
+                        | KeyCode::PageUp
+                        | KeyCode::End
+                        | KeyCode::Home,
+                        _,
+                    ) => {
+                        self.move_point(&code)?;
+                    }
+                    _ => {}
                 }
-                KeyCode::Up
-                | KeyCode::Down
-                | KeyCode::Left
-                | KeyCode::Right
-                | KeyCode::PageDown
-                | KeyCode::PageUp
-                | KeyCode::End
-                | KeyCode::Home => {
-                    self.move_point(*code)?;
-                }
-                _ => (),
             }
+            Event::Resize(width_u16, height_u16) => {
+                #[allow(clippy::as_conversions)]
+                let height = *height_u16 as usize;
+                #[allow(clippy::as_conversions)]
+                let width = *width_u16 as usize;
+                self.view.resize(Size { height, width });
+            }
+            _ => {}
         }
         Ok(())
     }
