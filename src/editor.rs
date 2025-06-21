@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 20:59:42
+ * @LastEditTime: 2025-06-21 21:17:49
  * @FilePath: \rim\src\editor.rs
  * @Description: 编辑器核心模块 - 主事件循环和状态管理
  */
@@ -84,11 +84,10 @@ impl Editor {
     /// 把所有无法处理且需要panic的错误都移动到了new中
     /// 对于其他所有情况,我们应当容忍错误,不要让程序崩溃,这里选择设置run禁止向上传播错误
     pub fn new() -> Result<Self, Error> {
-        println!("This is Editor::new()"); // test for where to output when panic
         let cur_hook = take_hook();
         // 使用move将所有权转移到闭包中,防止cur_hook在new后被drop
         set_hook(Box::new(move |panic_info| {
-            println!("Custom panic hook");
+            // println!("Custom panic hook"); // test done, No problem
             let _ = Terminal::terminate();
             cur_hook(panic_info);
         }));

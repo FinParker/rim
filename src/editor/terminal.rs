@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-03 20:49:45
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 10:30:07
+ * @LastEditTime: 2025-06-21 21:15:50
  * @FilePath: \rim\src\terminal.rs
  * @Description: 终端操作抽象层
  */
@@ -19,6 +19,7 @@
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
 
@@ -49,14 +50,16 @@ impl Terminal {
     /// 初始化终端
     ///
     /// 执行以下操作：
-    /// 1. 启用原始模式
-    /// 2. 清屏
-    /// 3. 移动光标到原点 (0, 0)
+    /// 1. 启用raw mode
+    /// 2. 进入备用Screen, 防止应用输出污染终端历史
+    /// 3. 清屏
+    /// 4. 移动光标到原点 (0, 0)
     ///
     /// # 错误
     /// 返回 `std::io::Error` 如果底层终端操作失败
     pub fn initialize() -> Result<(), Error> {
         enable_raw_mode()?;
+        Self::enter_alternate_screen()?;
         Self::clear_screen()?;
         Self::move_cursor_to(Position { x: 0, y: 0 })?;
         Self::execute()?;
@@ -66,14 +69,30 @@ impl Terminal {
     /// 恢复终端原始状态
     ///
     /// 执行以下操作：
-    /// 1. 刷新输出缓冲区
-    /// 2. 禁用原始模式
+    /// 1. 退出备用Screen, 回到主Screen
+    /// 2. 显示光标
+    /// 3. 刷新输出缓存
+    /// 4. 禁用原始模式
     ///
     /// # 错误
     /// 返回 `std::io::Error` 如果底层终端操作失败
     pub fn terminate() -> Result<(), Error> {
+        Self::leave_alternate_screen()?;
+        Self::show_cursor()?;
         Self::execute()?;
         disable_raw_mode()?;
+        Ok(())
+    }
+
+    /// 进入备用屏幕
+    pub fn enter_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(EnterAlternateScreen)?;
+        Ok(())
+    }
+
+    /// 退出备用屏幕
+    pub fn leave_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(LeaveAlternateScreen)?;
         Ok(())
     }
 
