@@ -150,6 +150,16 @@ impl Terminal {
         Ok(())
     }
 
+    /// 移动光标到指定行
+    ///
+    /// # 参数
+    /// - `row`: 目标行
+    pub fn move_cursor_to_row(row: usize) -> Result<(), Error> {
+        #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+        Self::queue_command(MoveTo(0, row as u16))?;
+        Ok(())
+    }
+
     /// 隐藏光标
     ///
     /// 常用于全屏应用避免光标闪烁干扰

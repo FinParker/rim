@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 20:44:31
+ * @LastEditTime: 2025-06-21 21:32:25
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -93,6 +93,7 @@ impl View {
     fn render_info(&mut self) {
         let Size { height: _, width } = self.size;
         for cur_row in 0..INFO_SECTION_SIZE {
+            let _ = Terminal::move_cursor_to_row(cur_row);
             let _ = Terminal::clear_line();
             if let Some(info) = self.key_events_info.get(cur_row) {
                 let display_info = if info.len() > width {
@@ -104,10 +105,6 @@ impl View {
             } else {
                 let _ = Terminal::print("");
             }
-            let _ = Terminal::move_cursor_to(Position {
-                x: 0,
-                y: min(cur_row + 1, INFO_SECTION_SIZE - 1),
-            });
         }
     }
 
@@ -116,11 +113,9 @@ impl View {
     /// 在信息区域下方显示文件内容
     fn render_buffer(&mut self) {
         let Size { height, width: _ } = self.size;
-        let _ = Terminal::move_cursor_to(Position {
-            x: 0,
-            y: INFO_SECTION_SIZE,
-        });
         for cur_row in INFO_SECTION_SIZE..height {
+            let _ = Terminal::move_cursor_to_row(cur_row);
+            let _ = Terminal::clear_line();
             let buffer_index = cur_row - INFO_SECTION_SIZE;
             let _ = Terminal::clear_line();
             if let Some(line) = self.buffer.lines.get(buffer_index) {
@@ -128,23 +123,16 @@ impl View {
             } else {
                 Self::draw_empty_row();
             }
-            let _ = Terminal::move_cursor_to(Position {
-                x: 0,
-                y: min(cur_row + 1, height - 1),
-            });
         }
         self.needs_redraw_buffer = false;
     }
 
     fn render_welcome_buffer(&mut self) {
         let Size { height, width: _ } = self.size;
-        let _ = Terminal::move_cursor_to(Position {
-            x: 0,
-            y: INFO_SECTION_SIZE,
-        });
         for cur_row in INFO_SECTION_SIZE..height {
-            let buffer_index = cur_row - INFO_SECTION_SIZE;
+            let _ = Terminal::move_cursor_to_row(cur_row);
             let _ = Terminal::clear_line();
+            let buffer_index = cur_row - INFO_SECTION_SIZE;
             #[allow(clippy::integer_division)]
             let start_index = (height - INFO_SECTION_SIZE) / 3;
             if buffer_index == start_index {
@@ -154,10 +142,6 @@ impl View {
             } else {
                 Self::draw_empty_row();
             }
-            let _ = Terminal::move_cursor_to(Position {
-                x: 0,
-                y: min(cur_row + 1, height - 1),
-            });
         }
         self.needs_redraw_buffer = false;
     }
