@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 10:48:56
+ * @LastEditTime: 2025-06-21 16:54:36
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -22,6 +22,9 @@ use std::collections::VecDeque;
 use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
 use std::io::Error;
+
+const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// 信息区域高度（固定行数）
 pub const INFO_SECTION_SIZE: usize = 5;
@@ -136,6 +139,33 @@ impl View {
         Ok(())
     }
 
+    fn render_welcome_buffer(&mut self) -> Result<(), Error> {
+        let Size { height, width: _ } = self.size;
+        Terminal::move_cursor_to(Position {
+            x: 0,
+            y: INFO_SECTION_SIZE,
+        })?;
+        for cur_row in INFO_SECTION_SIZE..height {
+            let buffer_index = cur_row - INFO_SECTION_SIZE;
+            Terminal::clear_line()?;
+            #[allow(clippy::integer_division)]
+            let start_index = (height - INFO_SECTION_SIZE) / 3;
+            if buffer_index == start_index {
+                self.draw_welcome_msg()?;
+            } else if buffer_index == start_index + 2 {
+                self.draw_help_msg()?;
+            } else {
+                Self::draw_empty_row()?;
+            }
+            Terminal::move_cursor_to(Position {
+                x: 0,
+                y: min(cur_row + 1, height - 1),
+            })?;
+        }
+        self.needs_redraw_buffer = false;
+        Ok(())
+    }
+
     /// 主渲染入口
     ///
     /// 根据终端尺寸决定渲染策略：
@@ -148,7 +178,11 @@ impl View {
         if height > INFO_SECTION_SIZE {
             self.render_info()?;
             if self.needs_redraw_buffer {
-                self.render_buffer()?;
+                if self.buffer.is_empty() {
+                    self.render_welcome_buffer()?;
+                } else {
+                    self.render_buffer()?;
+                }
             }
         } else {
             self.draw_size_warning()?;
@@ -161,6 +195,36 @@ impl View {
     /// 在缓冲区末尾显示 `~` 符号表示空行
     fn draw_empty_row() -> Result<(), Error> {
         Terminal::print("~")?;
+        Ok(())
+    }
+
+    /// 绘制欢迎指示符
+    ///
+    fn draw_welcome_msg(&self) -> Result<(), Error> {
+        let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
+        let width = self.size.width;
+        let len = welcome_msg.len();
+        #[allow(clippy::integer_division)]
+        let padding = (width.saturating_sub(len)) / 2;
+        let spaces = " ".repeat(padding.saturating_sub(1));
+        welcome_msg = format!("~{spaces}{welcome_msg}");
+        welcome_msg.truncate(width);
+        Terminal::print(&welcome_msg)?;
+        Ok(())
+    }
+
+    /// 绘制帮助指示符
+    ///
+    fn draw_help_msg(&self) -> Result<(), Error> {
+        let mut help_msg = "Press <Ctrl+h> for help; Press <Ctrl+q> to exit".to_string();
+        let width = self.size.width;
+        let len = help_msg.len();
+        #[allow(clippy::integer_division)]
+        let padding = (width.saturating_sub(len)) / 2;
+        let spaces = " ".repeat(padding.saturating_sub(1));
+        help_msg = format!("~{spaces}{help_msg}");
+        help_msg.truncate(width);
+        Terminal::print(&help_msg)?;
         Ok(())
     }
 
