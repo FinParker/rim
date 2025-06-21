@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 20:12:41
+ * @LastEditTime: 2025-06-21 20:59:42
  * @FilePath: \rim\src\editor.rs
  * @Description: 编辑器核心模块 - 主事件循环和状态管理
  */
@@ -252,5 +252,11 @@ impl Editor {
 
         let _ = Terminal::show_cursor();
         let _ = Terminal::execute();
+    }
+}
+
+impl Drop for Editor {
+    fn drop(&mut self) {
+        let _ = Terminal::terminate(); // must ignore error, in case of Double Panic
     }
 }
