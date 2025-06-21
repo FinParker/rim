@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-12 09:51:30
+ * @LastEditTime: 2025-06-21 10:48:56
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -188,7 +188,7 @@ impl View {
     ///
     /// 事件会显示在终端顶部的信息区域
     pub fn log_event(&mut self, tag: &str, info: &str) {
-        let str = format!("[{:<4}] {}", tag, info);
+        let str = format!("[{tag:<4}] {info}");
         if INFO_SECTION_SIZE == 0 {
             return;
         }

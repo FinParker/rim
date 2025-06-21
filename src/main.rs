@@ -17,15 +17,7 @@
 //! RIM 文本编辑器主模块
 //!
 //! 提供编辑器核心功能入口点，负责初始化并运行编辑器实例
-//!
-//! # 使用示例
-//! ```
-//! use rim::Editor;
-//!
-//! fn main() {
-//!     Editor::default().run();
-//! }
-//! ```
+
 mod editor;
 use editor::Editor;
 

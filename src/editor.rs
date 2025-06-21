@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-05-12 09:31:58
+ * @LastEditTime: 2025-06-21 10:51:41
  * @FilePath: \rim\src\editor.rs
  * @Description: 编辑器核心模块 - 主事件循环和状态管理
  */
@@ -22,11 +22,7 @@ mod terminal;
 mod view;
 
 use core::cmp::{max, min};
-use crossterm::event::{
-    read,
-    Event::{self, Key},
-    KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
-};
+use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use std::{env, io::Error};
 use terminal::{Position, Size, Terminal};
@@ -117,7 +113,7 @@ impl Editor {
     ///
     /// ## 边界处理策略
     /// 使用saturating运算避免越界，确保位置始终有效
-    fn move_point(&mut self, key_code: &KeyCode) -> Result<(), Error> {
+    fn move_point(&mut self, key_code: KeyCode) -> Result<(), Error> {
         let Location { mut x, mut y } = self.location;
         let Size { height, width } = Terminal::size()?;
 
@@ -158,7 +154,7 @@ impl Editor {
                     &format!("Key {code:?} Pressed, modifiers: {modifiers:?}"),
                 );
 
-                match (code, *modifiers) {
+                match (*code, *modifiers) {
                     // Ctrl-Q 退出组合键
                     (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                         self.should_quit = true;
@@ -175,7 +171,7 @@ impl Editor {
                         | KeyCode::Home,
                         _,
                     ) => {
-                        self.move_point(code)?;
+                        self.move_point(*code)?;
                     }
                     _ => {}
                 }
