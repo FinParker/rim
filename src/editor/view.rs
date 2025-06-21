@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 16:54:36
+ * @LastEditTime: 2025-06-21 20:14:31
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -117,7 +117,7 @@ impl View {
     ///
     /// 在信息区域下方显示文件内容
     fn render_buffer(&mut self) -> Result<(), Error> {
-        let Size { height, width: _ } = self.size;
+        let Size { height, width } = self.size;
         Terminal::move_cursor_to(Position {
             x: 0,
             y: INFO_SECTION_SIZE,

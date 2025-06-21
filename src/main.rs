@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-04-30 21:21:13
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 10:23:47
+ * @LastEditTime: 2025-06-21 19:09:59
  * @FilePath: \rim\src\main.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,7 +28,6 @@ use editor::Editor;
 /// # 错误
 /// 返回 `std::io::Error` 如果终端初始化失败
 fn main() {
-    let mut editor = Editor::default();
-    editor.run();
+    Editor::new().unwrap().run();
     // Editor::default().run();
 }
