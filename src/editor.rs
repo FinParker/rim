@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 10:51:41
+ * @LastEditTime: 2025-06-21 11:19:35
  * @FilePath: \rim\src\editor.rs
  * @Description: 编辑器核心模块 - 主事件循环和状态管理
  */
@@ -179,8 +179,8 @@ impl Editor {
             // 窗口尺寸变化事件
             Event::Resize(width, height) => {
                 self.view.resize(Size {
-                    height: *height as usize,
-                    width: *width as usize,
+                    height: usize::from(*height),
+                    width: usize::from(*width),
                 });
             }
             _ => {}
