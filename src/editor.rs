@@ -84,7 +84,7 @@ impl Editor {
     /// 把所有无法处理且需要panic的错误都移动到了new中
     /// 对于其他所有情况,我们应当容忍错误,不要让程序崩溃,这里选择设置run禁止向上传播错误
     pub fn new() -> Result<Self, Error> {
-        println!("This is Editor::new()");
+        println!("This is Editor::new()"); // test for where to output when panic
         let cur_hook = take_hook();
         // 使用move将所有权转移到闭包中,防止cur_hook在new后被drop
         set_hook(Box::new(move |panic_info| {
@@ -233,23 +233,24 @@ impl Editor {
     /// 1. 正常状态：更新视图内容
     /// 2. 退出状态：显示告别信息
     fn refresh_screen(&mut self) {
-        Terminal::hide_cursor();
+        // explicitly ignore the Result value & Error
+        let _ = Terminal::hide_cursor();
 
         if self.should_quit {
             // 退出状态渲染
-            Terminal::clear_screen();
-            Terminal::move_cursor_to(Position { x: 0, y: 0 });
-            Terminal::print("Goodbye. <rim> user.\r\n");
+            let _ = Terminal::clear_screen();
+            let _ = Terminal::move_cursor_to(Position { x: 0, y: 0 });
+            let _ = Terminal::print("Goodbye. <rim> user.\r\n");
         } else {
             // 正常状态渲染
             self.view.render();
-            Terminal::move_cursor_to(Position {
+            let _ = Terminal::move_cursor_to(Position {
                 x: self.location.x,
                 y: self.location.y,
             });
         }
 
-        Terminal::show_cursor();
-        Terminal::execute();
+        let _ = Terminal::show_cursor();
+        let _ = Terminal::execute();
     }
 }

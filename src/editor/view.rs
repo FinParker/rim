@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 20:14:31
+ * @LastEditTime: 2025-06-21 20:44:31
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -21,7 +21,6 @@ use std::collections::VecDeque;
 
 use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
-use std::io::Error;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -91,79 +90,76 @@ impl View {
     /// 渲染信息区域
     ///
     /// 在终端顶部显示事件日志队列
-    fn render_info(&mut self) -> Result<(), Error> {
+    fn render_info(&mut self) {
         let Size { height: _, width } = self.size;
         for cur_row in 0..INFO_SECTION_SIZE {
-            Terminal::clear_line()?;
+            let _ = Terminal::clear_line();
             if let Some(info) = self.key_events_info.get(cur_row) {
                 let display_info = if info.len() > width {
                     format!("{}...", &info[..width.saturating_sub(3)])
                 } else {
                     info.clone()
                 };
-                Terminal::print(&display_info)?;
+                let _ = Terminal::print(&display_info);
             } else {
-                Terminal::print("")?;
+                let _ = Terminal::print("");
             }
-            Terminal::move_cursor_to(Position {
+            let _ = Terminal::move_cursor_to(Position {
                 x: 0,
                 y: min(cur_row + 1, INFO_SECTION_SIZE - 1),
-            })?;
+            });
         }
-        Ok(())
     }
 
     /// 渲染文本缓冲区
     ///
     /// 在信息区域下方显示文件内容
-    fn render_buffer(&mut self) -> Result<(), Error> {
-        let Size { height, width } = self.size;
-        Terminal::move_cursor_to(Position {
+    fn render_buffer(&mut self) {
+        let Size { height, width: _ } = self.size;
+        let _ = Terminal::move_cursor_to(Position {
             x: 0,
             y: INFO_SECTION_SIZE,
-        })?;
+        });
         for cur_row in INFO_SECTION_SIZE..height {
             let buffer_index = cur_row - INFO_SECTION_SIZE;
-            Terminal::clear_line()?;
+            let _ = Terminal::clear_line();
             if let Some(line) = self.buffer.lines.get(buffer_index) {
-                Terminal::print(line)?;
+                let _ = Terminal::print(line);
             } else {
-                Self::draw_empty_row()?;
+                Self::draw_empty_row();
             }
-            Terminal::move_cursor_to(Position {
+            let _ = Terminal::move_cursor_to(Position {
                 x: 0,
                 y: min(cur_row + 1, height - 1),
-            })?;
+            });
         }
         self.needs_redraw_buffer = false;
-        Ok(())
     }
 
-    fn render_welcome_buffer(&mut self) -> Result<(), Error> {
+    fn render_welcome_buffer(&mut self) {
         let Size { height, width: _ } = self.size;
-        Terminal::move_cursor_to(Position {
+        let _ = Terminal::move_cursor_to(Position {
             x: 0,
             y: INFO_SECTION_SIZE,
-        })?;
+        });
         for cur_row in INFO_SECTION_SIZE..height {
             let buffer_index = cur_row - INFO_SECTION_SIZE;
-            Terminal::clear_line()?;
+            let _ = Terminal::clear_line();
             #[allow(clippy::integer_division)]
             let start_index = (height - INFO_SECTION_SIZE) / 3;
             if buffer_index == start_index {
-                self.draw_welcome_msg()?;
+                self.draw_welcome_msg();
             } else if buffer_index == start_index + 2 {
-                self.draw_help_msg()?;
+                self.draw_help_msg();
             } else {
-                Self::draw_empty_row()?;
+                Self::draw_empty_row();
             }
-            Terminal::move_cursor_to(Position {
+            let _ = Terminal::move_cursor_to(Position {
                 x: 0,
                 y: min(cur_row + 1, height - 1),
-            })?;
+            });
         }
         self.needs_redraw_buffer = false;
-        Ok(())
     }
 
     /// 主渲染入口
@@ -171,36 +167,34 @@ impl View {
     /// 根据终端尺寸决定渲染策略：
     /// - 足够大：渲染信息区域+缓冲区
     /// - 太小：显示警告信息
-    pub fn render(&mut self) -> Result<(), Error> {
+    pub fn render(&mut self) {
         let Size { height, width: _ } = self.size;
-        Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+        let _ = Terminal::move_cursor_to(Position { x: 0, y: 0 });
 
         if height > INFO_SECTION_SIZE {
-            self.render_info()?;
+            self.render_info();
             if self.needs_redraw_buffer {
                 if self.buffer.is_empty() {
-                    self.render_welcome_buffer()?;
+                    self.render_welcome_buffer();
                 } else {
-                    self.render_buffer()?;
+                    self.render_buffer();
                 }
             }
         } else {
-            self.draw_size_warning()?;
+            self.draw_size_warning();
         }
-        Ok(())
     }
 
     /// 绘制空行指示符
     ///
     /// 在缓冲区末尾显示 `~` 符号表示空行
-    fn draw_empty_row() -> Result<(), Error> {
-        Terminal::print("~")?;
-        Ok(())
+    fn draw_empty_row() {
+        let _ = Terminal::print("~");
     }
 
     /// 绘制欢迎指示符
     ///
-    fn draw_welcome_msg(&self) -> Result<(), Error> {
+    fn draw_welcome_msg(&self) {
         let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
         let width = self.size.width;
         let len = welcome_msg.len();
@@ -209,13 +203,12 @@ impl View {
         let spaces = " ".repeat(padding.saturating_sub(1));
         welcome_msg = format!("~{spaces}{welcome_msg}");
         welcome_msg.truncate(width);
-        Terminal::print(&welcome_msg)?;
-        Ok(())
+        let _ = Terminal::print(&welcome_msg);
     }
 
     /// 绘制帮助指示符
     ///
-    fn draw_help_msg(&self) -> Result<(), Error> {
+    fn draw_help_msg(&self) {
         let mut help_msg = "Press <Ctrl+h> for help; Press <Ctrl+q> to exit".to_string();
         let width = self.size.width;
         let len = help_msg.len();
@@ -224,24 +217,22 @@ impl View {
         let spaces = " ".repeat(padding.saturating_sub(1));
         help_msg = format!("~{spaces}{help_msg}");
         help_msg.truncate(width);
-        Terminal::print(&help_msg)?;
-        Ok(())
+        let _ = Terminal::print(&help_msg);
     }
 
     /// 绘制终端过小警告
-    fn draw_size_warning(&self) -> Result<(), Error> {
+    fn draw_size_warning(&self) {
         const WARNING_MSG: &str = "终端尺寸过小，建议调整窗口大小";
         for row in 0..self.size.height {
-            Terminal::clear_line()?;
+            let _ = Terminal::clear_line();
             if row == 0 {
-                Terminal::print(WARNING_MSG)?;
+                let _ = Terminal::print(WARNING_MSG);
             }
-            Terminal::move_cursor_to(Position {
+            let _ = Terminal::move_cursor_to(Position {
                 x: 0,
                 y: min(row + 1, self.size.height - 1),
-            })?;
+            });
         }
-        Ok(())
     }
 
     /// 记录事件到信息区域
