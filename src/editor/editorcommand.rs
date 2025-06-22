@@ -1,7 +1,7 @@
 use crate::editor::terminal::Size;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::convert::TryFrom;
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Direction {
     Up,
     Down,

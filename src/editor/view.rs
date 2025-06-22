@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 16:23:12
+ * @LastEditTime: 2025-06-22 18:49:12
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -46,7 +46,7 @@ pub struct View {
     size: Size,
     /// 当前位置
     location: Location,
-    ///
+    /// `screen`的`buffer`区左上角和原始数据左上角的偏移
     scroll_offset: Location,
     /// 缓冲区重绘标志
     needs_redraw_buffer: bool,
@@ -101,11 +101,11 @@ impl View {
             }
             EditorCommand::OtherKeyCommand(string) => {
                 if !self.only_log_key_press {
-                    self.handle_other_key_command(string);
+                    self.handle_other_key_command(&string);
                 }
             }
             EditorCommand::OtherEvent(string) => {
-                self.handle_other_event(string);
+                self.handle_other_event(&string);
             }
             EditorCommand::Quit => {}
         }
@@ -134,8 +134,13 @@ impl View {
         }
     }
 
-    pub fn get_position(&self) -> Position {
-        self.location.subtract(&self.scroll_offset).into()
+    pub fn get_cursor_position(&self) -> Position {
+        let Location { x, y } = self.location;
+        let Location { x: x_off, y: y_off } = self.scroll_offset;
+        Position {
+            x: x.saturating_sub(x_off),
+            y: y.saturating_sub(y_off) + INFO_SECTION_SIZE,
+        }
     }
 
     /// 渲染信息区域
@@ -303,6 +308,7 @@ impl View {
     fn move_text_location(&mut self, direction: Direction) {
         let Location { mut x, mut y } = self.location;
         let Size { height, width } = self.size;
+        let buffer_height = height - INFO_SECTION_SIZE;
         match direction {
             Direction::Up => {
                 y = y.saturating_sub(1);
@@ -317,10 +323,10 @@ impl View {
                 x = x.saturating_add(1);
             }
             Direction::PageUp => {
-                y = 0;
+                y = y.saturating_sub(buffer_height - 1);
             }
             Direction::PageDown => {
-                y = height.saturating_sub(1);
+                y = y.saturating_add(buffer_height - 1);
             }
             Direction::Home => {
                 x = 0;
@@ -348,22 +354,23 @@ impl View {
             offset_changed = true;
         }
         // 垂直滚动
+        let buffer_height = height - INFO_SECTION_SIZE;
         if y < self.scroll_offset.y {
             self.scroll_offset.y = y;
             offset_changed = true;
-        } else if y >= self.scroll_offset.y.saturating_add(height) {
-            self.scroll_offset.y = y.saturating_sub(height).saturating_add(1);
+        } else if y >= self.scroll_offset.y.saturating_add(buffer_height) {
+            self.scroll_offset.y = y.saturating_sub(buffer_height).saturating_add(1);
             offset_changed = true;
         }
 
         self.needs_redraw_buffer = offset_changed;
     }
 
-    fn handle_other_key_command(&mut self, string: String) {
-        self.log_event("KEY", &string);
+    fn handle_other_key_command(&mut self, str: &str) {
+        self.log_event("KEY", str);
     }
 
-    fn handle_other_event(&mut self, string: String) {
-        self.log_event("OTH", &string);
+    fn handle_other_event(&mut self, str: &str) {
+        self.log_event("OTH", str);
     }
 }

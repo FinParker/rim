@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 16:06:46
+ * @LastEditTime: 2025-06-22 16:35:16
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -168,7 +168,7 @@ impl Editor {
         } else {
             // 正常状态渲染
             self.view.render();
-            let _ = Terminal::move_cursor_to(self.view.get_position());
+            let _ = Terminal::move_cursor_to(self.view.get_cursor_position());
         }
 
         let _ = Terminal::show_cursor();
