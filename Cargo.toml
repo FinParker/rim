@@ -1,7 +1,12 @@
 [package]
-name = "rim"
+name = "rim-editor"
 version = "0.1.0"
 edition = "2021"
+authors = ["Zhang Shengjie <2576226012@qq.com>"]
+description = "A terminal-based text viewer built following hecto-tutorial"
+license = "MIT"
+repository = "https://github.com/FinParker/rim"
+
 
 [dependencies]
 crossterm = "0.29.0"
