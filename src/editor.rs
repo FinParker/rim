@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 13:43:39
+ * @LastEditTime: 2025-06-22 16:06:46
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -30,8 +30,7 @@ mod editorcommand;
 mod terminal;
 mod view;
 
-use core::cmp::{max, min};
-use crossterm::event::{read, Event, KeyCode};
+use crossterm::event::{read, Event};
 use editorcommand::EditorCommand;
 
 use std::{
@@ -39,32 +38,8 @@ use std::{
     io::Error,
     panic::{set_hook, take_hook},
 };
-use terminal::{Position, Size, Terminal};
+use terminal::{Position, Terminal};
 use view::View;
-
-use crate::editor::view::INFO_SECTION_SIZE;
-
-/// 光标位置状态
-///
-/// ## 设计选择
-/// 独立于视图坐标系统，简化位置管理
-#[derive(Copy, Clone)]
-struct Location {
-    /// 水平位置（列索引）
-    x: usize,
-    /// 垂直位置（行索引）
-    y: usize,
-}
-
-impl Default for Location {
-    fn default() -> Self {
-        Self {
-            x: 0,
-            y: INFO_SECTION_SIZE,
-        }
-    }
-}
-
 /// 编辑器主控制器
 ///
 /// ## 职责划分
@@ -75,8 +50,6 @@ impl Default for Location {
 pub struct Editor {
     /// 退出标志，控制主循环终止
     should_quit: bool,
-    /// 当前光标位置状态
-    location: Location,
     /// 视图控制器实例
     view: View,
 }
@@ -111,7 +84,6 @@ impl Editor {
         }
         Ok(Self {
             should_quit: false,
-            location: Location::default(),
             view,
         })
     }
@@ -158,29 +130,6 @@ impl Editor {
         }
     }
 
-    /// 移动光标位置
-    ///
-    /// ## 边界处理策略
-    /// 使用saturating运算避免越界，确保位置始终有效
-    fn move_point(&mut self, key_code: KeyCode) {
-        let Location { mut x, mut y } = self.location;
-        let Size { height, width } = Terminal::size().unwrap_or_default();
-
-        match key_code {
-            KeyCode::Up => y = max(INFO_SECTION_SIZE, y.saturating_sub(1)),
-            KeyCode::Down => y = min(height.saturating_sub(1), y.saturating_add(1)),
-            KeyCode::Left => x = x.saturating_sub(1),
-            KeyCode::Right => x = min(width.saturating_sub(1), x.saturating_add(1)),
-            KeyCode::PageUp => y = INFO_SECTION_SIZE,
-            KeyCode::PageDown => y = height.saturating_sub(1),
-            KeyCode::Home => x = 0,
-            KeyCode::End => x = width.saturating_sub(1),
-            _ => (),
-        }
-
-        self.location = Location { x, y };
-    }
-
     /// 事件评估与路由
     ///
     /// ## 处理策略
@@ -196,56 +145,10 @@ impl Editor {
                 self.view.handle_command(command);
             }
             Err(err) => {
-                let info = format!("Command {} Not Supported", err);
+                let info = format!("Command {err} Not Supported");
                 self.view.log_event("NSUP", &info);
             }
         }
-        //println!("{command:?}");
-        // match event {
-        //     Event::Key(KeyEvent {
-        //         code,
-        //         modifiers,
-        //         kind: KeyEventKind::Press,
-        //         ..
-        //     }) => {
-        //         // 记录所有按键事件用于调试
-        //         self.view.log_event(
-        //             "KEY",
-        //             &format!("Key {code:?} Pressed, modifiers: {modifiers:?}"),
-        //         );
-
-        //         match (*code, *modifiers) {
-        //             // Ctrl-Q 退出组合键
-        //             (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-        //                 self.should_quit = true;
-        //             }
-        //             // 导航键处理
-        //             (
-        //                 KeyCode::Up
-        //                 | KeyCode::Down
-        //                 | KeyCode::Left
-        //                 | KeyCode::Right
-        //                 | KeyCode::PageDown
-        //                 | KeyCode::PageUp
-        //                 | KeyCode::End
-        //                 | KeyCode::Home,
-        //                 _,
-        //             ) => {
-        //                 self.move_point(*code);
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        //     // 窗口尺寸变化事件
-        //     Event::Resize(width, height) => {
-        //         #[allow(clippy::as_conversions)]
-        //         self.view.resize(Size {
-        //             height: *height as usize,
-        //             width: *width as usize,
-        //         });
-        //     }
-        //     _ => {}
-        // }
     }
 
     /// 刷新屏幕内容
@@ -265,10 +168,7 @@ impl Editor {
         } else {
             // 正常状态渲染
             self.view.render();
-            let _ = Terminal::move_cursor_to(Position {
-                x: self.location.x,
-                y: self.location.y,
-            });
+            let _ = Terminal::move_cursor_to(self.view.get_position());
         }
 
         let _ = Terminal::show_cursor();

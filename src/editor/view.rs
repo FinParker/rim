@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 13:42:23
+ * @LastEditTime: 2025-06-22 16:23:12
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -16,8 +16,11 @@
 //! 使用双缓冲区策略优化渲染性能
 
 mod buffer;
+mod line;
+mod location;
 use crate::editor::editorcommand::{Direction, EditorCommand};
 use buffer::Buffer;
+use location::Location;
 use std::collections::VecDeque;
 
 use crate::editor::terminal::{Position, Size, Terminal};
@@ -39,11 +42,15 @@ pub struct View {
     key_events_info: VecDeque<String>,
     /// 文本缓冲区实例
     buffer: Buffer,
-    /// 缓冲区重绘标志
-    needs_redraw_buffer: bool,
     /// 当前终端尺寸
     size: Size,
-    /// 是否记录KeyRelease和KeyRepeat
+    /// 当前位置
+    location: Location,
+    ///
+    scroll_offset: Location,
+    /// 缓冲区重绘标志
+    needs_redraw_buffer: bool,
+    /// 是否记录`KeyRelease`和`KeyRepeat`
     only_log_key_press: bool,
 }
 
@@ -52,8 +59,10 @@ impl Default for View {
         Self {
             key_events_info: VecDeque::default(),
             buffer: Buffer::default(),
-            needs_redraw_buffer: true,
             size: Terminal::size().unwrap_or_default(),
+            location: Location::default(),
+            scroll_offset: Location::default(),
+            needs_redraw_buffer: true,
             only_log_key_press: true,
         }
     }
@@ -98,12 +107,7 @@ impl View {
             EditorCommand::OtherEvent(string) => {
                 self.handle_other_event(string);
             }
-            _ => {
-                #[cfg(debug_assertions)]
-                {
-                    panic!("Command Not Handled in View: {command:?}");
-                }
-            }
+            EditorCommand::Quit => {}
         }
     }
 
@@ -128,6 +132,10 @@ impl View {
         } else {
             self.draw_size_warning();
         }
+    }
+
+    pub fn get_position(&self) -> Position {
+        self.location.subtract(&self.scroll_offset).into()
     }
 
     /// 渲染信息区域
@@ -155,14 +163,17 @@ impl View {
     ///
     /// 在信息区域下方显示文件内容
     fn render_buffer(&mut self) {
-        let Size { height, width: _ } = self.size;
+        let Size { height, width } = self.size;
+        let top_row = self.scroll_offset.y;
         for row in INFO_SECTION_SIZE..height {
             let _ = Terminal::move_cursor_to_row(row);
             let _ = Terminal::clear_line();
             let buffer_index = row - INFO_SECTION_SIZE;
-            let _ = Terminal::clear_line();
-            if let Some(line) = self.buffer.lines.get(buffer_index) {
-                let _ = Terminal::print(line);
+            if let Some(line) = self.buffer.lines.get(buffer_index.saturating_add(top_row)) {
+                let left = self.scroll_offset.x;
+                let right = self.scroll_offset.x.saturating_add(width);
+                let info = &line.get(left..right);
+                let _ = Terminal::print(info);
             } else {
                 Self::draw_empty_row();
             }
@@ -259,7 +270,7 @@ impl View {
 
     /// 处理帮助命令
     ///
-    /// 会在INFO区打印help信息
+    /// 会在`INFO`区打印`help`信息
     fn help(&mut self) {
         let info = "Press <Ctrl+q> to quit the editor";
         self.log_event("HELP", info);
@@ -290,7 +301,62 @@ impl View {
     /// - `direction`: 移动方式
     ///
     fn move_text_location(&mut self, direction: Direction) {
+        let Location { mut x, mut y } = self.location;
+        let Size { height, width } = self.size;
+        match direction {
+            Direction::Up => {
+                y = y.saturating_sub(1);
+            }
+            Direction::Down => {
+                y = y.saturating_add(1);
+            }
+            Direction::Left => {
+                x = x.saturating_sub(1);
+            }
+            Direction::Right => {
+                x = x.saturating_add(1);
+            }
+            Direction::PageUp => {
+                y = 0;
+            }
+            Direction::PageDown => {
+                y = height.saturating_sub(1);
+            }
+            Direction::Home => {
+                x = 0;
+            }
+            Direction::End => {
+                x = width.saturating_sub(1);
+            }
+        }
+        self.location = Location { x, y };
+        self.scroll_location_into_view();
         self.log_event("MOVE", &format!("{direction:?}"));
+    }
+
+    fn scroll_location_into_view(&mut self) {
+        let Location { x, y } = self.location;
+        let Size { width, height } = self.size;
+        let mut offset_changed = false;
+        // 如果text location在screen外, 需要滚动
+        // 水平滚动
+        if x < self.scroll_offset.x {
+            self.scroll_offset.x = x;
+            offset_changed = true;
+        } else if x >= self.scroll_offset.x.saturating_add(width) {
+            self.scroll_offset.x = x.saturating_sub(width).saturating_add(1);
+            offset_changed = true;
+        }
+        // 垂直滚动
+        if y < self.scroll_offset.y {
+            self.scroll_offset.y = y;
+            offset_changed = true;
+        } else if y >= self.scroll_offset.y.saturating_add(height) {
+            self.scroll_offset.y = y.saturating_sub(height).saturating_add(1);
+            offset_changed = true;
+        }
+
+        self.needs_redraw_buffer = offset_changed;
     }
 
     fn handle_other_key_command(&mut self, string: String) {

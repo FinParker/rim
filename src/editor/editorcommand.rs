@@ -44,7 +44,13 @@ impl TryFrom<Event> for EditorCommand {
                 (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
                 (KeyCode::Home, _) => Ok(Self::Move(Direction::Home)),
                 (KeyCode::End, _) => Ok(Self::Move(Direction::End)),
-                _ => Err(format!("Press <{modifiers} {code}>")),
+                _ => {
+                    if modifiers == KeyModifiers::empty() {
+                        Err(format!("Press <{code}>"))
+                    } else {
+                        Err(format!("Press <{modifiers} {code}>"))
+                    }
+                }
             },
             // 处理其他的KeyEvent, 包括KeyRelease和KeyRepeat
             Event::Key(key_event) if key_event.kind != KeyEventKind::Press => {

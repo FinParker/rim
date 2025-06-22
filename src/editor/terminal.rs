@@ -33,6 +33,8 @@ pub struct Size {
 }
 
 /// 光标位置坐标
+///
+/// Position = where we are on the screen
 #[derive(Copy, Clone)]
 pub struct Position {
     /// 水平位置（列索引，0-based）
