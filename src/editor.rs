@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 10:57:59
+ * @LastEditTime: 2025-06-22 13:43:39
  * @FilePath: \rim\src\editor.rs
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -31,7 +31,8 @@ mod terminal;
 mod view;
 
 use core::cmp::{max, min};
-use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{read, Event, KeyCode};
+use editorcommand::EditorCommand;
 
 use std::{
     env,
@@ -141,7 +142,7 @@ impl Editor {
             }
             match read() {
                 Ok(event) => {
-                    self.evaluate_event(&event);
+                    self.evaluate_event(event);
                 }
                 Err(err) => {
                     #[cfg(debug_assertions)]
@@ -187,52 +188,64 @@ impl Editor {
     /// 2. 特殊组合键触发状态变更
     /// 3. 导航键更新光标位置
     /// 4. 窗口尺寸变化通知视图
-    fn evaluate_event(&mut self, event: &Event) {
-        match event {
-            Event::Key(KeyEvent {
-                code,
-                modifiers,
-                kind: KeyEventKind::Press,
-                ..
-            }) => {
-                // 记录所有按键事件用于调试
-                self.view.log_event(
-                    "KEY",
-                    &format!("Key {code:?} Pressed, modifiers: {modifiers:?}"),
-                );
-
-                match (*code, *modifiers) {
-                    // Ctrl-Q 退出组合键
-                    (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                        self.should_quit = true;
-                    }
-                    // 导航键处理
-                    (
-                        KeyCode::Up
-                        | KeyCode::Down
-                        | KeyCode::Left
-                        | KeyCode::Right
-                        | KeyCode::PageDown
-                        | KeyCode::PageUp
-                        | KeyCode::End
-                        | KeyCode::Home,
-                        _,
-                    ) => {
-                        self.move_point(*code);
-                    }
-                    _ => {}
-                }
+    fn evaluate_event(&mut self, event: Event) {
+        let command = EditorCommand::try_from(event);
+        match command {
+            Ok(EditorCommand::Quit) => self.should_quit = true,
+            Ok(command) => {
+                self.view.handle_command(command);
             }
-            // 窗口尺寸变化事件
-            Event::Resize(width, height) => {
-                #[allow(clippy::as_conversions)]
-                self.view.resize(Size {
-                    height: *height as usize,
-                    width: *width as usize,
-                });
+            Err(err) => {
+                let info = format!("Command {} Not Supported", err);
+                self.view.log_event("NSUP", &info);
             }
-            _ => {}
         }
+        //println!("{command:?}");
+        // match event {
+        //     Event::Key(KeyEvent {
+        //         code,
+        //         modifiers,
+        //         kind: KeyEventKind::Press,
+        //         ..
+        //     }) => {
+        //         // 记录所有按键事件用于调试
+        //         self.view.log_event(
+        //             "KEY",
+        //             &format!("Key {code:?} Pressed, modifiers: {modifiers:?}"),
+        //         );
+
+        //         match (*code, *modifiers) {
+        //             // Ctrl-Q 退出组合键
+        //             (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+        //                 self.should_quit = true;
+        //             }
+        //             // 导航键处理
+        //             (
+        //                 KeyCode::Up
+        //                 | KeyCode::Down
+        //                 | KeyCode::Left
+        //                 | KeyCode::Right
+        //                 | KeyCode::PageDown
+        //                 | KeyCode::PageUp
+        //                 | KeyCode::End
+        //                 | KeyCode::Home,
+        //                 _,
+        //             ) => {
+        //                 self.move_point(*code);
+        //             }
+        //             _ => {}
+        //         }
+        //     }
+        //     // 窗口尺寸变化事件
+        //     Event::Resize(width, height) => {
+        //         #[allow(clippy::as_conversions)]
+        //         self.view.resize(Size {
+        //             height: *height as usize,
+        //             width: *width as usize,
+        //         });
+        //     }
+        //     _ => {}
+        // }
     }
 
     /// 刷新屏幕内容

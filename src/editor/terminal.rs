@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-03 20:49:45
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 21:15:50
+ * @LastEditTime: 2025-06-22 12:08:39
  * @FilePath: \rim\src\terminal.rs
  * @Description: 终端操作抽象层
  */
@@ -24,7 +24,7 @@ use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
 
 /// 终端尺寸表示
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Debug)]
 pub struct Size {
     /// 终端高度（行数）
     pub height: usize,

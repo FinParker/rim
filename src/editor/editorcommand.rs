@@ -1,6 +1,7 @@
 use crate::editor::terminal::Size;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::convert::TryFrom;
+#[derive(Debug)]
 pub enum Direction {
     Up,
     Down,
@@ -12,17 +13,21 @@ pub enum Direction {
     End,
 }
 
+#[derive(Debug)]
 pub enum EditorCommand {
     Move(Direction),
     Resize(Size),
     Help,
     Quit,
+    OtherKeyCommand(String),
+    OtherEvent(String),
 }
 
 impl TryFrom<Event> for EditorCommand {
     type Error = String;
     fn try_from(event: Event) -> Result<Self, Self::Error> {
         match event {
+            // 处理KeyPress
             Event::Key(KeyEvent {
                 code,
                 modifiers,
@@ -39,8 +44,16 @@ impl TryFrom<Event> for EditorCommand {
                 (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
                 (KeyCode::Home, _) => Ok(Self::Move(Direction::Home)),
                 (KeyCode::End, _) => Ok(Self::Move(Direction::End)),
-                _ => Err(format!("Key Event <{modifiers} {code}> Not Supported")),
+                _ => Err(format!("Press <{modifiers} {code}>")),
             },
+            // 处理其他的KeyEvent, 包括KeyRelease和KeyRepeat
+            Event::Key(key_event) if key_event.kind != KeyEventKind::Press => {
+                Ok(Self::OtherKeyCommand(format!(
+                    "KeyEvent: code={},modifiers={},kind={:?},state={:?}",
+                    key_event.code, key_event.modifiers, key_event.kind, key_event.state
+                )))
+            }
+            // 处理ResizeEvent
             Event::Resize(width, height) =>
             {
                 #[allow(clippy::as_conversions)]
@@ -49,7 +62,7 @@ impl TryFrom<Event> for EditorCommand {
                     width: width as usize,
                 }))
             }
-            _ => Err(format!("Event {event:?} Not Supported")),
+            _ => Ok(Self::OtherEvent(format!("{event:?}"))),
         }
     }
 }

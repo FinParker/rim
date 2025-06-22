@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 21:41:26
+ * @LastEditTime: 2025-06-22 13:42:23
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -16,6 +16,7 @@
 //! 使用双缓冲区策略优化渲染性能
 
 mod buffer;
+use crate::editor::editorcommand::{Direction, EditorCommand};
 use buffer::Buffer;
 use std::collections::VecDeque;
 
@@ -42,6 +43,8 @@ pub struct View {
     needs_redraw_buffer: bool,
     /// 当前终端尺寸
     size: Size,
+    /// 是否记录KeyRelease和KeyRepeat
+    only_log_key_press: bool,
 }
 
 impl Default for View {
@@ -51,29 +54,12 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw_buffer: true,
             size: Terminal::size().unwrap_or_default(),
+            only_log_key_press: true,
         }
     }
 }
 
 impl View {
-    /// 处理终端尺寸变化
-    ///
-    /// # 参数
-    /// - `to`: 新的终端尺寸
-    ///
-    /// 会触发重绘并记录尺寸变化事件
-    pub fn resize(&mut self, to: Size) {
-        self.size = to;
-        self.needs_redraw_buffer = true;
-        self.log_event(
-            "INFO",
-            &format!(
-                "Change window size to {{ height: {} }}, {{ width:  {} }}",
-                self.size.height, self.size.width
-            ),
-        );
-    }
-
     /// 加载文件到缓冲区
     ///
     /// # 参数
@@ -84,6 +70,63 @@ impl View {
         if let Ok(buffer) = Buffer::load_file(filename) {
             self.buffer = buffer;
             self.log_event("INFO", &format!("{filename:?} opened."));
+        }
+    }
+
+    /// 处理事件命令
+    ///
+    /// # 参数
+    /// - `command`: 时间命令
+    ///
+    /// 根据不同命令执行不同路径
+    pub fn handle_command(&mut self, command: EditorCommand) {
+        match command {
+            EditorCommand::Help => {
+                self.help();
+            }
+            EditorCommand::Move(direction) => {
+                self.move_text_location(direction);
+            }
+            EditorCommand::Resize(size) => {
+                self.resize(size);
+            }
+            EditorCommand::OtherKeyCommand(string) => {
+                if !self.only_log_key_press {
+                    self.handle_other_key_command(string);
+                }
+            }
+            EditorCommand::OtherEvent(string) => {
+                self.handle_other_event(string);
+            }
+            _ => {
+                #[cfg(debug_assertions)]
+                {
+                    panic!("Command Not Handled in View: {command:?}");
+                }
+            }
+        }
+    }
+
+    /// 主渲染入口
+    ///
+    /// 根据终端尺寸决定渲染策略：
+    /// - 足够大：渲染信息区域+缓冲区
+    /// - 太小：显示警告信息
+    pub fn render(&mut self) {
+        let Size { height, width: _ } = self.size;
+        let _ = Terminal::move_cursor_to(Position { x: 0, y: 0 });
+
+        if height > INFO_SECTION_SIZE {
+            self.render_info();
+            if self.needs_redraw_buffer {
+                if self.buffer.is_empty() {
+                    self.render_welcome_buffer();
+                } else {
+                    self.render_buffer();
+                }
+            }
+        } else {
+            self.draw_size_warning();
         }
     }
 
@@ -144,29 +187,6 @@ impl View {
             }
         }
         self.needs_redraw_buffer = false;
-    }
-
-    /// 主渲染入口
-    ///
-    /// 根据终端尺寸决定渲染策略：
-    /// - 足够大：渲染信息区域+缓冲区
-    /// - 太小：显示警告信息
-    pub fn render(&mut self) {
-        let Size { height, width: _ } = self.size;
-        let _ = Terminal::move_cursor_to(Position { x: 0, y: 0 });
-
-        if height > INFO_SECTION_SIZE {
-            self.render_info();
-            if self.needs_redraw_buffer {
-                if self.buffer.is_empty() {
-                    self.render_welcome_buffer();
-                } else {
-                    self.render_buffer();
-                }
-            }
-        } else {
-            self.draw_size_warning();
-        }
     }
 
     /// 绘制空行指示符
@@ -235,5 +255,49 @@ impl View {
             self.key_events_info.pop_front();
         }
         self.key_events_info.push_back(str);
+    }
+
+    /// 处理帮助命令
+    ///
+    /// 会在INFO区打印help信息
+    fn help(&mut self) {
+        let info = "Press <Ctrl+q> to quit the editor";
+        self.log_event("HELP", info);
+    }
+
+    /// 处理终端尺寸变化命令
+    ///
+    /// # 参数
+    /// - `to`: 新的终端尺寸
+    ///
+    /// 会触发重绘并记录尺寸变化事件
+    fn resize(&mut self, to: Size) {
+        self.size = to;
+        self.needs_redraw_buffer = true;
+        self.log_event(
+            "INFO",
+            &format!(
+                "Change window size to {{ height: {} }}, {{ width:  {} }}",
+                self.size.height, self.size.width
+            ),
+        );
+    }
+
+    /// 处理屏幕移动
+    /// TODO
+    ///
+    /// # 参数
+    /// - `direction`: 移动方式
+    ///
+    fn move_text_location(&mut self, direction: Direction) {
+        self.log_event("MOVE", &format!("{direction:?}"));
+    }
+
+    fn handle_other_key_command(&mut self, string: String) {
+        self.log_event("KEY", &string);
+    }
+
+    fn handle_other_event(&mut self, string: String) {
+        self.log_event("OTH", &string);
     }
 }
