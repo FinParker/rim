@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 18:49:12
+ * @LastEditTime: 2025-06-22 20:16:10
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -20,6 +20,7 @@ mod line;
 mod location;
 use crate::editor::editorcommand::{Direction, EditorCommand};
 use buffer::Buffer;
+use line::Line;
 use location::Location;
 use std::collections::VecDeque;
 
@@ -307,7 +308,7 @@ impl View {
     ///
     fn move_text_location(&mut self, direction: Direction) {
         let Location { mut x, mut y } = self.location;
-        let Size { height, width } = self.size;
+        let Size { height, .. } = self.size;
         let buffer_height = height - INFO_SECTION_SIZE;
         match direction {
             Direction::Up => {
@@ -317,10 +318,21 @@ impl View {
                 y = y.saturating_add(1);
             }
             Direction::Left => {
-                x = x.saturating_sub(1);
+                if x > 0 {
+                    x -= 1;
+                } else if y > 0 {
+                    y -= 1;
+                    x = self.buffer.lines.get(y).map_or(0, Line::len);
+                }
             }
             Direction::Right => {
-                x = x.saturating_add(1);
+                let width = self.buffer.lines.get(y).map_or(0, Line::len);
+                if x < width {
+                    x += 1;
+                } else {
+                    y = y.saturating_add(1);
+                    x = 0;
+                }
             }
             Direction::PageUp => {
                 y = y.saturating_sub(buffer_height - 1);
@@ -332,9 +344,15 @@ impl View {
                 x = 0;
             }
             Direction::End => {
-                x = width.saturating_sub(1);
+                x = self.buffer.lines.get(y).map_or(0, Line::len);
             }
         }
+        x = self
+            .buffer
+            .lines
+            .get(y)
+            .map_or(0, |line| min(line.len(), x));
+        y = min(y, self.buffer.lines.len());
         self.location = Location { x, y };
         self.scroll_location_into_view();
         self.log_event("MOVE", &format!("{direction:?}"));
