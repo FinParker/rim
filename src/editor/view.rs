@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-21 21:32:25
+ * @LastEditTime: 2025-06-21 21:41:26
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -92,10 +92,10 @@ impl View {
     /// 在终端顶部显示事件日志队列
     fn render_info(&mut self) {
         let Size { height: _, width } = self.size;
-        for cur_row in 0..INFO_SECTION_SIZE {
-            let _ = Terminal::move_cursor_to_row(cur_row);
+        for row in 0..INFO_SECTION_SIZE {
+            let _ = Terminal::move_cursor_to_row(row);
             let _ = Terminal::clear_line();
-            if let Some(info) = self.key_events_info.get(cur_row) {
+            if let Some(info) = self.key_events_info.get(row) {
                 let display_info = if info.len() > width {
                     format!("{}...", &info[..width.saturating_sub(3)])
                 } else {
@@ -113,10 +113,10 @@ impl View {
     /// 在信息区域下方显示文件内容
     fn render_buffer(&mut self) {
         let Size { height, width: _ } = self.size;
-        for cur_row in INFO_SECTION_SIZE..height {
-            let _ = Terminal::move_cursor_to_row(cur_row);
+        for row in INFO_SECTION_SIZE..height {
+            let _ = Terminal::move_cursor_to_row(row);
             let _ = Terminal::clear_line();
-            let buffer_index = cur_row - INFO_SECTION_SIZE;
+            let buffer_index = row - INFO_SECTION_SIZE;
             let _ = Terminal::clear_line();
             if let Some(line) = self.buffer.lines.get(buffer_index) {
                 let _ = Terminal::print(line);
@@ -129,10 +129,10 @@ impl View {
 
     fn render_welcome_buffer(&mut self) {
         let Size { height, width: _ } = self.size;
-        for cur_row in INFO_SECTION_SIZE..height {
-            let _ = Terminal::move_cursor_to_row(cur_row);
+        for row in INFO_SECTION_SIZE..height {
+            let _ = Terminal::move_cursor_to_row(row);
             let _ = Terminal::clear_line();
-            let buffer_index = cur_row - INFO_SECTION_SIZE;
+            let buffer_index = row - INFO_SECTION_SIZE;
             #[allow(clippy::integer_division)]
             let start_index = (height - INFO_SECTION_SIZE) / 3;
             if buffer_index == start_index {
