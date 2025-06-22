@@ -19,6 +19,25 @@ A small text-editor written by Rust.
 - What's new in `rim` v.s. `hecto`?
   - An Extra Info Section to tell what's happening
 
+## Features
+
+- Open and view text files
+- Navigation with arrow keys, PageUp/Down, Home/End
+- Resizable terminal support
+- Basic logging for debugging
+
+## Installation
+
+```bash
+cargo install rim-editor
+```
+
+## Usage
+
+```bash
+rim-editor path/to/file.txt
+```
+
 ## cargo command
 
 `cargo run <filename>`  
