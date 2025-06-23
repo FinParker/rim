@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-23 09:46:27
+ * @LastEditTime: 2025-06-23 14:13:05
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -23,7 +23,6 @@ use buffer::Buffer;
 use line::Line;
 use location::Location;
 use std::collections::VecDeque;
-use unicode_segmentation::UnicodeSegmentation;
 
 use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
@@ -54,8 +53,9 @@ pub struct View {
     buffer: Buffer,
     /// 当前终端尺寸
     size: Size,
-    /// 当前位置
+    /// 当前位置,确定渲染边界
     location: Location,
+    /// 字素位置
     /// `screen`的`buffer`区左上角和原始数据左上角的偏移
     scroll_offset: Location,
     /// 当前模式
@@ -170,7 +170,8 @@ impl View {
             let _ = Terminal::clear_line();
             if let Some(info) = self.key_events_info.get(row) {
                 let display_info = if info.len() > width {
-                    format!("{}...", &info[..width.saturating_sub(3)])
+                    format!("{}", &info)
+                    //format!("{}...", &info[..width.saturating_sub(3)])
                 } else {
                     info.clone()
                 };
@@ -187,6 +188,9 @@ impl View {
     fn render_buffer(&mut self) {
         let Size { height, width } = self.size;
         let top_row = self.scroll_offset.y;
+
+        // let mut log_entries = Vec::new();
+
         for row in INFO_SECTION_SIZE..height {
             let _ = Terminal::move_cursor_to_row(row);
             let _ = Terminal::clear_line();
@@ -194,12 +198,17 @@ impl View {
             if let Some(line) = self.buffer.lines.get(buffer_index.saturating_add(top_row)) {
                 let start = self.scroll_offset.x;
                 let end = self.scroll_offset.x.saturating_add(width);
-                let info = &line.get_graphemes(start..end);
+                let info = &line.get_display_string(start..end);
+                // log_entries.push((start, end, info.clone()));
                 let _ = Terminal::print(info);
             } else {
                 Self::draw_empty_row();
             }
         }
+        // for (start, end, info) in log_entries {
+        //     self.log_event("TEST", &format!("{start} - {end}"));
+        //     self.log_event("TEST", &info);
+        // }
         self.needs_redraw_buffer = false;
     }
 
@@ -338,11 +347,11 @@ impl View {
                     x -= 1;
                 } else if y > 0 {
                     y -= 1;
-                    x = self.buffer.lines.get(y).map_or(0, Line::grapheme_len);
+                    x = self.buffer.lines.get(y).map_or(0, Line::byte_len);
                 }
             }
             Direction::Right => {
-                let width = self.buffer.lines.get(y).map_or(0, Line::grapheme_len);
+                let width = self.buffer.lines.get(y).map_or(0, Line::byte_len);
                 if x < width {
                     x += 1;
                 } else {
@@ -360,14 +369,15 @@ impl View {
                 x = 0;
             }
             Direction::End => {
-                x = self.buffer.lines.get(y).map_or(0, Line::grapheme_len);
+                x = self.buffer.lines.get(y).map_or(0, Line::byte_len);
             }
         }
+        // 限制Location {x, y} 不会超出一行的长度,不会超出文档的长度
         x = self
             .buffer
             .lines
             .get(y)
-            .map_or(0, |line| min(line.grapheme_len(), x));
+            .map_or(0, |line| min(line.byte_len(), x));
         y = min(y, self.buffer.lines.len());
         self.location = Location { x, y };
         self.scroll_location_into_view();
