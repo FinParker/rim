@@ -1,12 +1,12 @@
 [package]
-name = "rim-editor"
+name = "rim-viewer"
 version = "0.1.0"
 edition = "2021"
 authors = ["Zhang Shengjie <2576226012@qq.com>"]
 description = "A terminal-based text viewer built following hecto-tutorial"
 license = "MIT"
 repository = "https://github.com/FinParker/rim"
-documentation = "https://docs.rs/rim-editor"
+documentation = "https://docs.rs/rim-viewer"
 keywords = ["text-editor", "terminal", "tui", "cli"]
 categories = ["command-line-utilities", "text-editors"]
 

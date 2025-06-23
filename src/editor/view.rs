@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-23 14:13:05
+ * @LastEditTime: 2025-06-23 16:14:20
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -26,6 +26,7 @@ use std::collections::VecDeque;
 
 use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
+use std::fmt;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -33,12 +34,21 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// 信息区域高度（固定行数）
 pub const INFO_SECTION_SIZE: usize = 5;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ViewMode {
-    Normal,
-    Insert,
-    Visual,
-    Command,
+#[derive(Copy, Clone, Default, Debug)]
+pub struct GraphemeLocation {
+    pub grapheme_index: usize,
+    pub line_index: usize,
+}
+
+impl fmt::Display for GraphemeLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "row {} col {}",
+            self.line_index + 1,
+            self.grapheme_index + 1
+        )
+    }
 }
 
 /// 编辑器视图管理器
@@ -56,10 +66,9 @@ pub struct View {
     /// 当前位置,确定渲染边界
     location: Location,
     /// 字素位置
+    grapheme_location: GraphemeLocation,
     /// `screen`的`buffer`区左上角和原始数据左上角的偏移
     scroll_offset: Location,
-    /// 当前模式
-    mode: ViewMode,
     /// 缓冲区重绘标志
     needs_redraw_buffer: bool,
     /// 是否记录`KeyRelease`和`KeyRepeat`
@@ -73,8 +82,8 @@ impl Default for View {
             buffer: Buffer::default(),
             size: Terminal::size().unwrap_or_default(),
             location: Location::default(),
+            grapheme_location: GraphemeLocation::default(),
             scroll_offset: Location::default(),
-            mode: ViewMode::Normal,
             needs_redraw_buffer: true,
             only_log_key_press: true,
         }
@@ -82,9 +91,6 @@ impl Default for View {
 }
 
 impl View {
-    pub fn get_mode(&self) -> ViewMode {
-        self.mode
-    }
     /// 加载文件到缓冲区
     ///
     /// # 参数
@@ -124,7 +130,6 @@ impl View {
                 self.handle_other_event(&string);
             }
             EditorCommand::Quit => {}
-            _ => {}
         }
     }
 
@@ -160,6 +165,33 @@ impl View {
         }
     }
 
+    fn get_grapheme_location(&self) -> GraphemeLocation {
+        let Location { x, y } = self.location;
+        let mut grapheme_offset = 0;
+        if let Some(line) = self.buffer.lines.get(y) {
+            grapheme_offset = line.get_grapheme_offset(x);
+        }
+        GraphemeLocation {
+            grapheme_index: grapheme_offset,
+            line_index: y,
+        }
+    }
+
+    fn get_location(&self) -> Location {
+        let GraphemeLocation {
+            grapheme_index,
+            line_index,
+        } = self.grapheme_location;
+        let mut byte_offset = 0;
+        if let Some(line) = self.buffer.lines.get(line_index) {
+            byte_offset = line.get_byte_offset(grapheme_index);
+        }
+        Location {
+            x: byte_offset,
+            y: line_index,
+        }
+    }
+
     /// 渲染信息区域
     ///
     /// 在终端顶部显示事件日志队列
@@ -170,8 +202,7 @@ impl View {
             let _ = Terminal::clear_line();
             if let Some(info) = self.key_events_info.get(row) {
                 let display_info = if info.len() > width {
-                    format!("{}", &info)
-                    //format!("{}...", &info[..width.saturating_sub(3)])
+                    info.to_string()
                 } else {
                     info.clone()
                 };
@@ -331,31 +362,39 @@ impl View {
     /// # 参数
     /// - `direction`: 移动方式
     ///
+    /// 获取字素位置,并移动,可以解决移动边界问题
     fn move_text_location(&mut self, direction: Direction) {
-        let Location { mut x, mut y } = self.location;
         let Size { height, .. } = self.size;
-        let buffer_height = height - INFO_SECTION_SIZE;
+        let GraphemeLocation {
+            grapheme_index: mut x,
+            line_index: mut y,
+        } = self.get_grapheme_location();
+        let buffer_height = height - INFO_SECTION_SIZE; // buffer区高度
+        let max_line = self.buffer.lines.len().saturating_sub(1); // 最大行索引
         match direction {
             Direction::Up => {
                 y = y.saturating_sub(1);
             }
             Direction::Down => {
                 y = y.saturating_add(1);
+                if y > max_line {
+                    y = max_line;
+                }
             }
             Direction::Left => {
                 if x > 0 {
                     x -= 1;
                 } else if y > 0 {
                     y -= 1;
-                    x = self.buffer.lines.get(y).map_or(0, Line::byte_len);
+                    x = self.buffer.lines.get(y).map_or(0, Line::fragment_len);
                 }
             }
             Direction::Right => {
-                let width = self.buffer.lines.get(y).map_or(0, Line::byte_len);
+                let width = self.buffer.lines.get(y).map_or(0, Line::fragment_len);
                 if x < width {
                     x += 1;
-                } else {
-                    y = y.saturating_add(1);
+                } else if y < max_line {
+                    y += 1;
                     x = 0;
                 }
             }
@@ -363,25 +402,36 @@ impl View {
                 y = y.saturating_sub(buffer_height - 1);
             }
             Direction::PageDown => {
-                y = y.saturating_add(buffer_height - 1);
+                y = (y + buffer_height - 1).min(max_line);
             }
             Direction::Home => {
                 x = 0;
             }
             Direction::End => {
-                x = self.buffer.lines.get(y).map_or(0, Line::byte_len);
+                x = self.buffer.lines.get(y).map_or(0, Line::fragment_len);
             }
         }
         // 限制Location {x, y} 不会超出一行的长度,不会超出文档的长度
-        x = self
-            .buffer
-            .lines
-            .get(y)
-            .map_or(0, |line| min(line.byte_len(), x));
-        y = min(y, self.buffer.lines.len());
-        self.location = Location { x, y };
+        if let Some(line) = self.buffer.lines.get(y) {
+            x = x.min(line.fragment_len());
+        } else {
+            y = self.buffer.lines.len().saturating_sub(1);
+            x = self.buffer.lines.get(y).map_or(0, Line::fragment_len);
+        }
+        // 限制Location {x, y} 到字素边界
+        self.grapheme_location = GraphemeLocation {
+            grapheme_index: x,
+            line_index: y,
+        };
+        self.location = self.get_location();
         self.scroll_location_into_view();
-        self.log_event("MOVE", &format!("{direction:?}"));
+        self.log_event(
+            "MOVE",
+            &format!(
+                "{direction:?}, Location: {}, Grapheme_Location: {}",
+                self.location, self.grapheme_location
+            ),
+        );
     }
 
     fn scroll_location_into_view(&mut self) {

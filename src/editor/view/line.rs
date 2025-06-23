@@ -2,13 +2,12 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-06-22 15:36:55
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-23 14:07:14
+ * @LastEditTime: 2025-06-23 16:19:08
  * @FilePath: \rim\src\editor\view\line.rs
  * @Description: 行处理, 支持字素切分
  */
-use std::{cmp, ops::Range};
+use std::ops::Range;
 
-use crossterm::{cursor, terminal::WindowSize};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -19,7 +18,7 @@ enum GraphemeWidth {
 }
 
 #[derive(Debug)]
-struct TextFragment {
+pub struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
     replacement: Option<char>,
@@ -33,14 +32,6 @@ impl TextFragment {
             // 注意：字素可能是多字符组合（如emoji），但渲染时我们只取第一个字符
             self.grapheme.chars().next().unwrap_or(' ')
         })
-    }
-
-    /// 获取实际渲染的宽度
-    fn display_width(&self) -> usize {
-        match self.rendered_width {
-            GraphemeWidth::Half => 1,
-            GraphemeWidth::Full => 2,
-        }
     }
 }
 
@@ -65,14 +56,12 @@ impl Line {
                 if width == 0 {
                     rendered_width = GraphemeWidth::Half;
                     replacement = Some('·');
+                } else if width == 1 {
+                    rendered_width = GraphemeWidth::Half;
+                    replacement = None;
                 } else {
-                    if width == 1 {
-                        rendered_width = GraphemeWidth::Half;
-                        replacement = None;
-                    } else {
-                        rendered_width = GraphemeWidth::Full;
-                        replacement = None;
-                    }
+                    rendered_width = GraphemeWidth::Full;
+                    replacement = None;
                 }
                 TextFragment {
                     grapheme: grapheme.to_string(),
@@ -87,17 +76,47 @@ impl Line {
         }
     }
 
-    pub fn as_str(&self) -> &str {
-        &self.string
+    pub fn get_grapheme_offset(&self, loc_x: usize) -> usize {
+        let mut cnt: usize = 0;
+        let mut cur_pos = 0;
+        for frag in &self.fragments {
+            // 计算片段起始位置
+            let frag_start = cur_pos;
+
+            // 计算片段结束位置
+            let frag_end = match frag.rendered_width {
+                GraphemeWidth::Half => frag_start + 1,
+                GraphemeWidth::Full => frag_start + 2,
+            };
+
+            if loc_x >= frag_start && loc_x < frag_end {
+                return cnt;
+            }
+            cur_pos = frag_end;
+            cnt += 1;
+        }
+        cnt
     }
 
-    pub fn to_string(&self) -> String {
-        self.string.clone()
+    pub fn get_byte_offset(&self, grapheme_offset: usize) -> usize {
+        let mut cur_pos = 0;
+
+        for (cnt, frag) in self.fragments.iter().enumerate() {
+            // 如果达到目标字符索引，返回当前位置
+            if cnt == grapheme_offset {
+                return cur_pos;
+            }
+
+            // 根据字符宽度更新位置
+            match frag.rendered_width {
+                GraphemeWidth::Half => cur_pos += 1,
+                GraphemeWidth::Full => cur_pos += 2,
+            }
+        }
+        // 如果索引超出范围，返回总长度（最后一个位置）
+        cur_pos
     }
 
-    pub fn fragments(&self) -> &[TextFragment] {
-        &self.fragments
-    }
     pub fn get_display_string(&self, range: Range<usize>) -> String {
         if self.is_empty() {
             return String::new();
@@ -161,17 +180,6 @@ impl Line {
         }
 
         result
-    }
-
-    pub fn byte_len(&self) -> usize {
-        let mut byte_len = 0;
-        for frag in &self.fragments {
-            byte_len += match frag.rendered_width {
-                GraphemeWidth::Half => 1,
-                GraphemeWidth::Full => 2,
-            }
-        }
-        byte_len
     }
 
     pub fn fragment_len(&self) -> usize {

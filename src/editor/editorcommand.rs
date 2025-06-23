@@ -20,10 +20,6 @@ pub enum EditorCommand {
     Resize(Size),
     Help,
     Quit,
-    EnterInsertMode,
-    EnterNormalMode,
-    EnterVisualMode,
-    EnterCommandMode,
     OtherKeyCommand(String),
     OtherEvent(String),
 }
@@ -41,10 +37,18 @@ impl TryFrom<Event> for EditorCommand {
             }) => match (code, modifiers) {
                 (KeyCode::Char('q'), KeyModifiers::CONTROL) => Ok(Self::Quit),
                 (KeyCode::Char('h'), KeyModifiers::CONTROL) => Ok(Self::Help),
-                (KeyCode::Up, _) => Ok(Self::Move(Direction::Up)),
-                (KeyCode::Down, _) => Ok(Self::Move(Direction::Down)),
-                (KeyCode::Left, _) => Ok(Self::Move(Direction::Left)),
-                (KeyCode::Right, _) => Ok(Self::Move(Direction::Right)),
+                (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::NONE) => {
+                    Ok(Self::Move(Direction::Up))
+                }
+                (KeyCode::Down, _) | (KeyCode::Char('j'), KeyModifiers::NONE) => {
+                    Ok(Self::Move(Direction::Down))
+                }
+                (KeyCode::Left, _) | (KeyCode::Char('h'), KeyModifiers::NONE) => {
+                    Ok(Self::Move(Direction::Left))
+                }
+                (KeyCode::Right, _) | (KeyCode::Char('l'), KeyModifiers::NONE) => {
+                    Ok(Self::Move(Direction::Right))
+                }
                 (KeyCode::PageUp, _) => Ok(Self::Move(Direction::PageUp)),
                 (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
                 (KeyCode::Home, _) => Ok(Self::Move(Direction::Home)),

@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-03 22:36:30
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-23 09:13:04
+ * @LastEditTime: 2025-06-23 16:35:39
  * @FilePath: \rim\README.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -13,6 +13,8 @@ rim-editor - A small text-editor written by Rust.
 一个使用Rust编写的小型文本编辑器.
 
 - Build follow [build-your-own-x](https://github.com/codecrafters-io/build-your-own-x) and [hecto指南](https://philippflenker.com/hecto/)
+
+- 目前已经完成Viewer部分的开发,后续会继续更新到Editor功能
 
 ## ✨ 主要特性
 
@@ -32,19 +34,48 @@ rim-editor - A small text-editor written by Rust.
 
     内置基础日志系统
 
+    字符显示
+
+        支持字素(Grapheme)
+
+        支持半角/全角字符
+
+        不完整的字符/控制字符/0宽度字符同一使用`'·'`替换
+
     轻量高效（Rust 原生编译）
 
 ## 🚀 安装
 
 ```bash
-cargo install rim-editor
+cargo install rim-viewer
 ```
 
 ## 🖥 使用
 
 ```bash
-rim-editor path/to/file.txt
+rim-viewer path/to/file.txt
 ```
+
+命令:
+`Ctrl+h` 帮助
+
+`Ctrl+q` 退出
+
+`j` `Up` 向下滚动
+
+`k` `Down` 向上滚动
+
+`h` `Left` 向左滚动
+
+`l` `Right` 向右滚动
+
+`PgUp` 向上滚动一页
+
+`PgDn` 向下滚动一页
+
+`Home` 回到行首
+
+`End` 回到行
 
 ## 🔧 开发
 

@@ -2,18 +2,11 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-01 08:52:36
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 20:42:22
- * @FilePath: \rim\src\editor.rs
- * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
- */
-/*
- * @Author: iming 2576226012@qq.com
- * @Date: 2025-05-01 08:52:36
- * @LastEditors: iming 2576226012@qq.com
  * @LastEditTime: 2025-06-22 10:55:48
  * @FilePath: \rim\src\editor.rs
  * @Description: 编辑器核心模块 - 主事件循环和状态管理
  */
+
 //! 编辑器核心引擎
 //!
 //! ## 设计架构
@@ -82,7 +75,6 @@ impl Editor {
         } else {
             view.log_event("INFO", "No file opened.");
         }
-        view.log_event("MODE", &format!("{:?}", view.get_mode()));
         Ok(Self {
             should_quit: false,
             view,
@@ -146,7 +138,7 @@ impl Editor {
                 self.view.handle_command(command);
             }
             Err(err) => {
-                let info = format!("Command {err} Not Supported");
+                let info = format!("Command {err} Not Supported, Press <Ctrl+h> for help");
                 self.view.log_event("NSUP", &info);
             }
         }
