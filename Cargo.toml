@@ -12,3 +12,4 @@ categories = ["command-line-utilities", "text-editors"]
 
 [dependencies]
 crossterm = "0.29.0"
+unicode-segmentation = "1.12.0"

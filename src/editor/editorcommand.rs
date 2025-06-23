@@ -1,6 +1,7 @@
 use crate::editor::terminal::Size;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::convert::TryFrom;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Direction {
     Up,
@@ -19,6 +20,10 @@ pub enum EditorCommand {
     Resize(Size),
     Help,
     Quit,
+    EnterInsertMode,
+    EnterNormalMode,
+    EnterVisualMode,
+    EnterCommandMode,
     OtherKeyCommand(String),
     OtherEvent(String),
 }

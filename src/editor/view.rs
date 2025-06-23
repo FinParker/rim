@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 20:16:10
+ * @LastEditTime: 2025-06-22 20:39:44
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -18,7 +18,7 @@
 mod buffer;
 mod line;
 mod location;
-use crate::editor::editorcommand::{Direction, EditorCommand};
+use super::editorcommand::{Direction, EditorCommand};
 use buffer::Buffer;
 use line::Line;
 use location::Location;
@@ -32,6 +32,14 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// 信息区域高度（固定行数）
 pub const INFO_SECTION_SIZE: usize = 5;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ViewMode {
+    Normal,
+    Insert,
+    Visual,
+    Command,
+}
 
 /// 编辑器视图管理器
 ///
@@ -49,6 +57,8 @@ pub struct View {
     location: Location,
     /// `screen`的`buffer`区左上角和原始数据左上角的偏移
     scroll_offset: Location,
+    /// 当前模式
+    mode: ViewMode,
     /// 缓冲区重绘标志
     needs_redraw_buffer: bool,
     /// 是否记录`KeyRelease`和`KeyRepeat`
@@ -63,6 +73,7 @@ impl Default for View {
             size: Terminal::size().unwrap_or_default(),
             location: Location::default(),
             scroll_offset: Location::default(),
+            mode: ViewMode::Normal,
             needs_redraw_buffer: true,
             only_log_key_press: true,
         }
@@ -70,6 +81,9 @@ impl Default for View {
 }
 
 impl View {
+    pub fn get_mode(&self) -> ViewMode {
+        self.mode
+    }
     /// 加载文件到缓冲区
     ///
     /// # 参数
@@ -109,6 +123,7 @@ impl View {
                 self.handle_other_event(&string);
             }
             EditorCommand::Quit => {}
+            _ => {}
         }
     }
 
