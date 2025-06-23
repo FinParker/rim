@@ -2,7 +2,7 @@
  * @Author: iming 2576226012@qq.com
  * @Date: 2025-05-07 20:05:58
  * @LastEditors: iming 2576226012@qq.com
- * @LastEditTime: 2025-06-22 20:39:44
+ * @LastEditTime: 2025-06-23 09:46:27
  * @FilePath: \rim\src\editor\view.rs
  * @Description: 编辑器视图组件
  */
@@ -23,6 +23,7 @@ use buffer::Buffer;
 use line::Line;
 use location::Location;
 use std::collections::VecDeque;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::editor::terminal::{Position, Size, Terminal};
 use std::cmp::min;
@@ -191,9 +192,9 @@ impl View {
             let _ = Terminal::clear_line();
             let buffer_index = row - INFO_SECTION_SIZE;
             if let Some(line) = self.buffer.lines.get(buffer_index.saturating_add(top_row)) {
-                let left = self.scroll_offset.x;
-                let right = self.scroll_offset.x.saturating_add(width);
-                let info = &line.get(left..right);
+                let start = self.scroll_offset.x;
+                let end = self.scroll_offset.x.saturating_add(width);
+                let info = &line.get_graphemes(start..end);
                 let _ = Terminal::print(info);
             } else {
                 Self::draw_empty_row();
@@ -337,11 +338,11 @@ impl View {
                     x -= 1;
                 } else if y > 0 {
                     y -= 1;
-                    x = self.buffer.lines.get(y).map_or(0, Line::len);
+                    x = self.buffer.lines.get(y).map_or(0, Line::grapheme_len);
                 }
             }
             Direction::Right => {
-                let width = self.buffer.lines.get(y).map_or(0, Line::len);
+                let width = self.buffer.lines.get(y).map_or(0, Line::grapheme_len);
                 if x < width {
                     x += 1;
                 } else {
@@ -359,14 +360,14 @@ impl View {
                 x = 0;
             }
             Direction::End => {
-                x = self.buffer.lines.get(y).map_or(0, Line::len);
+                x = self.buffer.lines.get(y).map_or(0, Line::grapheme_len);
             }
         }
         x = self
             .buffer
             .lines
             .get(y)
-            .map_or(0, |line| min(line.len(), x));
+            .map_or(0, |line| min(line.grapheme_len(), x));
         y = min(y, self.buffer.lines.len());
         self.location = Location { x, y };
         self.scroll_location_into_view();
